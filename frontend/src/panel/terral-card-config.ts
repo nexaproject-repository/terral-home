@@ -153,6 +153,7 @@ export class TerralCardConfig extends TerralSheet {
 
   private _defaultName(): string {
     const c = this.draft.config;
+    if (this.draft.type === "alarm") return t(this.hass, "alarm");
     const dev = c.device ? (this.hass.devices?.[c.device] as Dev | undefined) : undefined;
     return dev ? this._devName(dev) : c.entity ? this._entName(c.entity) : "";
   }
@@ -166,7 +167,9 @@ export class TerralCardConfig extends TerralSheet {
       <h3>${t(h, "general")}</h3>
       <div class="list">
         ${type === "alarm"
-          ? this._row(t(h, "type_alarm"), c.entity ? this._entName(c.entity) : t(h, "choose"), "alarm")
+          ? this._alarms().length > 1
+            ? this._row(t(h, "type_alarm"), c.entity ? this._entName(c.entity) : t(h, "choose"), "alarm")
+            : nothing
           : this._row(t(h, "ch_device"), dev ? this._devName(dev) : c.entity ? this._entName(c.entity) : t(h, "choose"), "device")}
         <label class="li">
           <span class="nm">${t(h, "name_label")}</span>
@@ -226,13 +229,10 @@ export class TerralCardConfig extends TerralSheet {
             </label>
           </div>
         </section>`;
-    } else if (type === "alarm" && c.entity) {
-      specific = html`<p class="note">${t(h, "alarm_no_settings")}</p>`;
     }
 
     return html`
       <div class="scroll">
-        ${this._renderPreview()}
         ${general}
         ${specific}
         ${this.options.mode === "edit" && this.options.onRemove
@@ -363,6 +363,21 @@ export class TerralCardConfig extends TerralSheet {
 
   protected renderContent() {
     return this._sub ? this._subPage() : this._main();
+  }
+
+  /** Alarm panels in the house, Alarmo's first. */
+  private _alarms(): string[] {
+    const plat = (id: string) => (this.hass.entities?.[id] as { platform?: string } | undefined)?.platform;
+    return Object.keys(this.hass.states)
+      .filter((id) => id.startsWith("alarm_control_panel.") && this._visible(id))
+      .sort((a, b) => Number(plat(b) === "alarmo") - Number(plat(a) === "alarmo"));
+  }
+
+  protected willUpdate(): void {
+    if (this.draft.type === "alarm" && !this.draft.config.entity && this.hass) {
+      const first = this._alarms()[0];
+      if (first) this.draft = { ...this.draft, config: { ...this.draft.config, entity: first } };
+    }
   }
 
   static styles = [
