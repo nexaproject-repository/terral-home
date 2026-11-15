@@ -1,6 +1,10 @@
 {
   "domain": "terral_home",
   "name": "Terral Home",
+  "categories": [
+    "messaging_notifications.push_notifications",
+    "appliances_cleaning"
+  ],
   "codeowners": ["@nexaproject-repository"],
   "config_flow": true,
   "dependencies": ["frontend", "http"],
