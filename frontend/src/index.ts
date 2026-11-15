@@ -1,6 +1,7 @@
 // Terral Home frontend entry point.
 // Nexa Projects by Manuel Escaño · MIT License.
 import "./light/terral-light-card";
+import "./alarm/terral-alarm-card";
 import "./panel/terral-home-panel";
 import type { HomeAssistant } from "./ha-types";
 
@@ -28,6 +29,18 @@ if (!w.customCards.some((c) => c.type === "terral-home-light")) {
     documentationURL: "https://github.com/nexaproject-repository/terral-home",
     getEntitySuggestion: (_hass, entityId) =>
       entityId.startsWith("light.") ? { config: { type: "custom:terral-home-light", entity: entityId } } : null,
+  });
+}
+
+if (!w.customCards.some((c) => c.type === "terral-home-alarm")) {
+  w.customCards.push({
+    type: "terral-home-alarm",
+    name: "Terral · Alarma",
+    description: "Alarma (Alarmo u otra) al estilo Terral Home / Terral Home alarm (Alarmo or any alarm panel)",
+    preview: true,
+    documentationURL: "https://github.com/nexaproject-repository/terral-home",
+    getEntitySuggestion: (_hass, entityId) =>
+      entityId.startsWith("alarm_control_panel.") ? { config: { type: "custom:terral-home-alarm", entity: entityId } } : null,
   });
 }
 

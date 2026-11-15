@@ -95,3 +95,31 @@ export const roomsIcon = (size = 20) => svg`
   <svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M3 10.5L12 4l9 6.5"></path><path d="M5 9.5V20h14V9.5"></path><path d="M12 20v-6M5 14h7"></path></svg>`;
+
+// ---- Alarm ----------------------------------------------------------------
+
+const line = (size: number, body: ReturnType<typeof svg>, w = 2) => svg`
+  <svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+
+const SHIELD = svg`<path d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6z"></path>`;
+export const shieldIcon = (size = 24) => line(size, SHIELD);
+export const shieldCheckIcon = (size = 24) => line(size, svg`${SHIELD}<path d="M9 12l2 2 4-4"></path>`);
+export const alertIcon = (size = 24) =>
+  line(size, svg`<path d="M12 3.5l9.5 16.5h-19z"></path><path d="M12 10v4.5"></path><path d="M12 17.5h.01"></path>`);
+export const awayIcon = (size = 20) =>
+  line(size, svg`<path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"></path><path d="M9 8l-4 4 4 4"></path><path d="M5 12h10"></path>`);
+export const homeIcon = (size = 20) =>
+  line(size, svg`<path d="M3.5 11L12 4l8.5 7"></path><path d="M6 9.5V20h12V9.5"></path><path d="M10 20v-5h4v5"></path>`);
+export const nightIcon = (size = 20) => line(size, svg`<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path>`);
+export const vacationIcon = (size = 20) =>
+  line(size, svg`<rect x="4" y="7.5" width="16" height="12.5" rx="2.5"></rect><path d="M9 7.5V5h6v2.5"></path><path d="M4 13h16"></path>`);
+export const customModeIcon = (size = 20) =>
+  line(size, svg`<path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle>`);
+export const unlockIcon = (size = 20) =>
+  line(size, svg`<rect x="5" y="11" width="14" height="10" rx="2.5"></rect><path d="M8 11V7.5a4 4 0 0 1 7.6-1.8"></path>`);
+export const lockIcon = (size = 20) =>
+  line(size, svg`<rect x="5" y="11" width="14" height="10" rx="2.5"></rect><path d="M8 11V7.5a4 4 0 0 1 8 0V11"></path>`);
+export const backspaceIcon = (size = 24) =>
+  line(size, svg`<path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"></path><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"></path>`);
+export const skipIcon = (size = 20) => line(size, svg`<path d="M5 5l9 7-9 7z"></path><path d="M18 5v14"></path>`);

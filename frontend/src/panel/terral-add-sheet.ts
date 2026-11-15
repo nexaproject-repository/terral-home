@@ -1,10 +1,10 @@
-// "Añadir accesorio": pick a light or light group to add to the panel.
+// "Añadir accesorio": pick an alarm, a light or a light group to add to the panel.
 import { css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HassEntity, HomeAssistant } from "../ha-types";
 import { t } from "../i18n";
 import { areaOf, isGroup, isOn } from "../light/light-model";
-import { bulbIcon, checkIcon, searchIcon } from "../shared/icons";
+import { bulbIcon, checkIcon, searchIcon, shieldIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
 
 interface Row {
@@ -13,6 +13,7 @@ interface Row {
   area: string;
   group: boolean;
   on: boolean;
+  alarm?: boolean;
 }
 
 @customElement("terral-add-sheet")
@@ -29,15 +30,17 @@ export class TerralAddSheet extends TerralSheet {
     const h = this.hass;
     const rows: Row[] = [];
     for (const [id, e] of Object.entries(h.states)) {
-      if (!id.startsWith("light.")) continue;
+      const alarm = id.startsWith("alarm_control_panel.");
+      if (!alarm && !id.startsWith("light.")) continue;
       const reg = h.entities?.[id] as { hidden?: boolean; entity_category?: string | null } | undefined;
       if (reg?.hidden || reg?.entity_category) continue;
       rows.push({
         id,
         name: h.formatEntityName?.(e as HassEntity) || (e.attributes.friendly_name as string) || id,
         area: areaOf(h, id) ?? t(h, "other_area"),
-        group: isGroup(e),
-        on: isOn(e),
+        group: !alarm && isGroup(e),
+        on: !alarm && isOn(e),
+        alarm,
       });
     }
     const q = this._q.trim().toLowerCase();
@@ -48,9 +51,10 @@ export class TerralAddSheet extends TerralSheet {
 
   protected renderContent() {
     const rows = this._rows();
+    const alarms = rows.filter((r) => r.alarm);
     const groups = rows.filter((r) => r.group);
     const byArea = new Map<string, Row[]>();
-    for (const r of rows.filter((r) => !r.group)) {
+    for (const r of rows.filter((r) => !r.group && !r.alarm)) {
       if (!byArea.has(r.area)) byArea.set(r.area, []);
       byArea.get(r.area)!.push(r);
     }
@@ -66,6 +70,7 @@ export class TerralAddSheet extends TerralSheet {
       </label>
       <div class="scroll">
         ${!rows.length ? html`<p class="empty">${t(this.hass, "no_lights")}</p>` : nothing}
+        ${alarms.length ? this._section(t(this.hass, "security"), alarms) : nothing}
         ${groups.length ? this._section(t(this.hass, "light_groups"), groups) : nothing}
         ${[...byArea].map(([area, list]) => this._section(area, list))}
       </div>
@@ -79,7 +84,7 @@ export class TerralAddSheet extends TerralSheet {
         ${rows.map((r) => {
           const added = this.existing.has(r.id);
           return html`<button class="row" ?disabled=${added} @click=${() => this._pick(r.id)}>
-            <span class="ic ${r.on ? "on" : ""}">${bulbIcon(r.on, 20)}</span>
+            <span class="ic ${r.on ? "on" : ""}">${r.alarm ? shieldIcon(20) : bulbIcon(r.on, 20)}</span>
             <span class="nm">${r.name}${r.group ? html`<small>${t(this.hass, "group")}</small>` : nothing}</span>
             ${added ? html`<span class="added">${checkIcon(16)} ${t(this.hass, "added")}</span>` : nothing}
           </button>`;

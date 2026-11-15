@@ -24,7 +24,7 @@ import { VERSION } from "../version";
 
 export interface TerralCard {
   id: string;
-  type: "light";
+  type: "light" | "alarm";
   entity: string;
   w: 1 | 2;
   h: 1 | 2 | 4;
@@ -171,7 +171,14 @@ export class TerralHomePanel extends LitElement {
         el.style.backgroundPosition = "top, bottom";
         el.style.backgroundAttachment = "fixed";
       }
+      // The Companion app paints the status-bar and home-bar areas natively
+      // from the theme variables it reads off the page; point them at our
+      // edges and ask it to read them again.
+      document.body.style.setProperty("--app-header-background-color", CHROME_TOP);
+      document.body.style.setProperty("--app-theme-color", CHROME_TOP);
+      document.body.style.setProperty("--primary-background-color", CHROME_BOTTOM);
       if (meta) meta.content = CHROME_TOP;
+      this._themeUpdate();
     } else if (this._chromeSaved) {
       for (const [el, style] of this._chromeSaved.styles) {
         if (style) el.setAttribute("style", style);
@@ -179,6 +186,17 @@ export class TerralHomePanel extends LitElement {
       }
       if (meta && this._chromeSaved.meta != null) meta.content = this._chromeSaved.meta;
       this._chromeSaved = undefined;
+      this._themeUpdate();
+    }
+  }
+
+  /** Same message HA's frontend sends after applying a theme. */
+  private _themeUpdate() {
+    const ext = (this.hass as unknown as { auth?: { external?: { fireMessage?: (m: object) => void } } })?.auth?.external;
+    try {
+      ext?.fireMessage?.({ type: "theme-update" });
+    } catch {
+      /* not in the Companion app */
     }
   }
 
@@ -279,14 +297,20 @@ export class TerralHomePanel extends LitElement {
     return { w: Math.min(w, this._cols), h };
   }
 
+  /** The corner grip only shows when the card has more than one size to offer. */
+  private _canResize(c: TerralCard): boolean {
+    const sizes = this._els.get(c.id)?.getTerralSizes?.() ?? ALL_SIZES;
+    return sizes.filter((s) => s.w <= this._cols).length > 1;
+  }
+
   private _element(c: TerralCard): CardEl {
     let el = this._els.get(c.id);
     if (!el) {
-      el = document.createElement("terral-home-light") as unknown as CardEl;
+      el = document.createElement(c.type === "alarm" ? "terral-home-alarm" : "terral-home-light") as unknown as CardEl;
       this._els.set(c.id, el);
     }
     const { id: _id, type: _type, w, h, ...rest } = c;
-    const config = { ...rest, type: "custom:terral-home-light", view_layout: { terral: { w, h } } };
+    const config = { ...rest, type: c.type === "alarm" ? "custom:terral-home-alarm" : "custom:terral-home-light", view_layout: { terral: { w, h } } };
     const key = JSON.stringify(config);
     if (el.dataset.cfg !== key) {
       try {
@@ -306,7 +330,9 @@ export class TerralHomePanel extends LitElement {
     if (!this.hass || !this._layout) return;
     openAddSheet(this.hass, new Set(this._allCards.map((c) => c.entity)), (entity) => {
       const e = this.hass?.states[entity];
-      const card: TerralCard = { id: uid(), type: "light", entity, w: e && isGroup(e) ? 2 : 1, h: 2 };
+      const card: TerralCard = entity.startsWith("alarm_control_panel.")
+        ? { id: uid(), type: "alarm", entity, w: 2, h: 2 }
+        : { id: uid(), type: "light", entity, w: e && isGroup(e) ? 2 : 1, h: 2 };
       this._update((l) => l.cards.push(card));
     });
   };
@@ -711,14 +737,14 @@ export class TerralHomePanel extends LitElement {
       ${edit
         ? html`<div class="overlay" @pointerdown=${(ev: PointerEvent) => this._overlayDown(ev, c.id)}>
             <button class="del" aria-label=${t(this.hass, "delete")} @click=${() => this._remove(c.id)}>${minusIcon()}</button>
-            <button
+            ${this._canResize(c) ? html`<button
               class="corner"
               aria-label=${t(this.hass, "resize")}
               @pointerdown=${(ev: PointerEvent) => this._resizeDown(ev, c)}
               @pointermove=${this._resizeMove}
               @pointerup=${this._resizeUp}
               @pointercancel=${this._resizeUp}
-            ><span></span></button>
+            ><span></span></button>` : nothing}
           </div>`
         : nothing}
       ${this._resize?.id === c.id
