@@ -161,29 +161,40 @@ export class TerralHomePanel extends LitElement {
    * background instead (page background + the app's theme-color), and put
    * everything back when leaving.
    */
-  private _chromeSaved?: { meta: string | null; styles: [HTMLElement, string][] };
+  private _chromeSaved?: { meta: string | null; props: [HTMLElement, string, string, string][] };
 
+  /**
+   * Only the properties we set are saved and put back, one by one. HA applies
+   * its themes (and dark mode) as inline styles on these same elements, so
+   * restoring whole style attributes would wipe a theme applied while Terral
+   * was open — that left the sidebar half light, half dark.
+   */
   private _paintChrome(on: boolean) {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    const els = [document.documentElement, document.body];
+    const html = document.documentElement;
+    const body = document.body;
+    const set: [HTMLElement, string, string][] = [
+      [html, "background", EDGE],
+      [body, "background", EDGE],
+      // The Companion app paints the status-bar and home-bar areas natively
+      // from these theme variables; point them at our edge colour.
+      [body, "--app-header-background-color", CHROME_TOP],
+      [body, "--app-theme-color", CHROME_TOP],
+      [body, "--primary-background-color", CHROME_BOTTOM],
+    ];
     if (on) {
       if (this._chromeSaved) return;
-      this._chromeSaved = { meta: meta?.content ?? null, styles: els.map((el) => [el, el.getAttribute("style") ?? ""]) };
-      for (const el of els) {
-        el.style.background = EDGE;
-      }
-      // The Companion app paints the status-bar and home-bar areas natively
-      // from the theme variables it reads off the page; point them at our
-      // edges and ask it to read them again.
-      document.body.style.setProperty("--app-header-background-color", CHROME_TOP);
-      document.body.style.setProperty("--app-theme-color", CHROME_TOP);
-      document.body.style.setProperty("--primary-background-color", CHROME_BOTTOM);
+      this._chromeSaved = {
+        meta: meta?.content ?? null,
+        props: set.map(([el, prop]) => [el, prop, el.style.getPropertyValue(prop), el.style.getPropertyPriority(prop)]),
+      };
+      for (const [el, prop, value] of set) el.style.setProperty(prop, value);
       if (meta) meta.content = CHROME_TOP;
       this._themeUpdate();
     } else if (this._chromeSaved) {
-      for (const [el, style] of this._chromeSaved.styles) {
-        if (style) el.setAttribute("style", style);
-        else el.removeAttribute("style");
+      for (const [el, prop, value, prio] of this._chromeSaved.props) {
+        if (value) el.style.setProperty(prop, value, prio);
+        else el.style.removeProperty(prop);
       }
       if (meta && this._chromeSaved.meta != null) meta.content = this._chromeSaved.meta;
       this._chromeSaved = undefined;
