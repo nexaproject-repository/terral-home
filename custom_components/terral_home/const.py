@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "terral_home"
 NAME = "Terral Home"
-VERSION = "0.5.1"
+VERSION = "0.5.2"
 
 # URL where the bundled frontend (cards, view, theme assets) is served.
 FRONTEND_URL_BASE = "/terral_home"

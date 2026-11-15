@@ -672,6 +672,7 @@ export class TerralHomePanel extends LitElement {
             ? html`<button class="addsec" @click=${this._addSection}>${plusIcon(20)}<span>${t(this.hass, "add_section")}</span></button>`
             : nothing}
         </div>
+        <div class="fade" aria-hidden="true"></div>
       </div>
     `;
   }
@@ -790,10 +791,19 @@ export class TerralHomePanel extends LitElement {
       -webkit-overflow-scrolling: touch;
       background-size: cover;
     }
+    /* Cards dissolve into the bottom edge as they scroll under it. */
+    .fade {
+      position: sticky;
+      bottom: 0;
+      height: 110px;
+      margin-top: -110px;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(58, 79, 128, 0) 0, rgba(58, 79, 128, 0.55) 45%, rgba(58, 79, 128, 0.92) 80%, #3a4f80 100%);
+    }
     .wrap {
       max-width: 1180px;
       margin: 0 auto;
-      padding: 12px 16px 48px;
+      padding: 12px 16px 110px;
       box-sizing: border-box;
     }
     @media (min-width: 600px) {
