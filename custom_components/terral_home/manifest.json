@@ -1,0 +1,14 @@
+{
+  "domain": "terral_home",
+  "name": "Terral Home",
+  "codeowners": ["@nexaproject-repository"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http"],
+  "documentation": "https://github.com/nexaproject-repository/terral-home",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/nexaproject-repository/terral-home/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "terral-home-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Terral Home view, cards and editors for Home Assistant",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "lit": "^3.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

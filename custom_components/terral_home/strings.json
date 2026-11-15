@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Terral Home",
+        "description": "Install the Terral Home dashboard, theme and cards. Notification settings will be added in a later version."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Terral Home is already set up."
+    }
+  }
+}
