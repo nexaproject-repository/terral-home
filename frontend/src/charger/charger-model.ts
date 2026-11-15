@@ -20,7 +20,7 @@ export const LOCK_DOMAINS = ["switch", "lock", "input_boolean"];
 export const domainOf = (id: string) => id.split(".")[0];
 export const isLockDomain = (id: string) => domainOf(id) === "lock";
 
-const KEYWORDS = /(wallbox|charger|cargador|evse|ev_|_ev|easee|zappi|ocpp|pulsar|wall_box|recarga|carga)/i;
+const KEYWORDS = /(wallbox|charger|cargador|evse|ev_|_ev|easee|zappi|ocpp|pulsar|wall_box|recarga)/i;
 export const looksLikeCharger = (id: string, name: string) => KEYWORDS.test(id) || KEYWORDS.test(name);
 
 /**

@@ -27,6 +27,7 @@ import {
   type RGB,
 } from "./light-model";
 import { openLightDialog, updateLightDialog } from "./terral-light-dialog";
+import { openCardSettings } from "../panel/terral-card-config";
 
 export interface TerralLightCardConfig extends LovelaceCardConfig {
   entity: string;
@@ -177,6 +178,7 @@ export class TerralLightCard extends LitElement {
       useLightColor: this._config.use_light_color !== false,
       favorites: favs,
       groupByArea: this._config.group_by_area,
+      onSettings: () => this.hass && this._config && openCardSettings(this, this.hass, "light", this._config),
     });
   };
 

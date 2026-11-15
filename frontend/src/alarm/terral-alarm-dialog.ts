@@ -9,6 +9,7 @@ import {
   awayIcon,
   closeIcon,
   customModeIcon,
+  gearIcon,
   homeIcon,
   lockIcon,
   nightIcon,
@@ -40,11 +41,21 @@ export const modeIcon = (m: AlarmMode, size = 20) =>
 export class TerralAlarmDialog extends TerralSheet {
   @property() entityId = "";
   @property() name = "";
+  @property({ attribute: false }) onSettings?: () => void;
   @state() private _tick = 0;
   private _timer?: number;
 
   protected get heading() {
     return this.name;
+  }
+
+  protected renderHeaderEnd() {
+    if (!this.onSettings) return nothing;
+    return html`<button class="hbtn" aria-label=${t(this.hass, "settings")} @click=${() => {
+      const go = this.onSettings!;
+      this.close();
+      go();
+    }}>${gearIcon(19)}</button>`;
   }
 
   connectedCallback(): void {
@@ -269,12 +280,13 @@ export class TerralAlarmDialog extends TerralSheet {
   ];
 }
 
-export function openAlarmDialog(hass: HomeAssistant, entityId: string, name: string) {
+export function openAlarmDialog(hass: HomeAssistant, entityId: string, name: string, onSettings?: () => void) {
   document.querySelector("terral-alarm-dialog")?.remove();
   const el = document.createElement("terral-alarm-dialog");
   el.hass = hass;
   el.entityId = entityId;
   el.name = name;
+  el.onSettings = onSettings;
   document.body.appendChild(el);
   return el;
 }

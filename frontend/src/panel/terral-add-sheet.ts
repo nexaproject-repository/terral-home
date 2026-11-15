@@ -1,114 +1,85 @@
-// "Añadir accesorio": pick an alarm, an EV charger, a light or a light group to add to the panel.
-import { css, html, nothing } from "lit";
+// "Añadir tarjeta": first choose the kind of card (list); its settings sheet
+// (device and name) comes next.
+import { css, html, nothing, svg } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { HassEntity, HomeAssistant } from "../ha-types";
-import { t } from "../i18n";
-import { areaOf, isGroup, isOn } from "../light/light-model";
-import { looksLikeCharger } from "../charger/charger-model";
-import { bulbIcon, checkIcon, evChargerIcon, searchIcon, shieldIcon } from "../shared/icons";
+import type { HomeAssistant } from "../ha-types";
+import { t, type StringKey } from "../i18n";
+import { bulbIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
+import type { CardType } from "./terral-card-config";
 
-interface Row {
-  id: string;
-  name: string;
-  area: string;
-  group: boolean;
-  on: boolean;
-  alarm?: boolean;
-  charger?: boolean;
-}
+const thermoIcon = (s = 20) => svg`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"></path></svg>`;
+const blindIcon = (s = 20) => svg`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16M5 4v12M19 4v12M5 8h14M5 12h14M5 16h14M12 16v4"></path></svg>`;
+const gaugeIcon = (s = 20) => svg`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 1 1 16 0"></path><path d="M12 18l4-6"></path></svg>`;
+
+const TYPES: { type: CardType; name: StringKey; desc: StringKey; icon: () => unknown; color: string }[] = [
+  { type: "light", name: "type_light", desc: "type_light_desc", icon: () => bulbIcon(true, 20), color: "#ffb020" },
+  { type: "alarm", name: "type_alarm", desc: "type_alarm_desc", icon: () => shieldIcon(20), color: "rgba(255,255,255,.18)" },
+  { type: "charger", name: "ev_charger", desc: "type_charger_desc", icon: () => evChargerIcon(20), color: "#34c77b" },
+];
+const SOON: { name: StringKey; icon: () => unknown }[] = [
+  { name: "type_climate", icon: () => thermoIcon() },
+  { name: "type_cover", icon: () => blindIcon() },
+  { name: "type_sensor", icon: () => gaugeIcon() },
+];
 
 @customElement("terral-add-sheet")
 export class TerralAddSheet extends TerralSheet {
-  @property({ attribute: false }) existing = new Set<string>();
-  @property({ attribute: false }) onPick?: (entityId: string) => void;
+  @property({ attribute: false }) onType?: (type: CardType) => void;
   @state() private _q = "";
-  /** Show every switch / lock as a possible charger. */
-  @state() private _allChargers = false;
 
   protected get heading() {
-    return t(this.hass, "add_accessory");
-  }
-
-  private _rows(): Row[] {
-    const h = this.hass;
-    const rows: Row[] = [];
-    for (const [id, e] of Object.entries(h.states)) {
-      const alarm = id.startsWith("alarm_control_panel.");
-      const lockish = /^(switch|lock|input_boolean)\./.test(id);
-      const fname = String(e.attributes.friendly_name ?? id);
-      const charger = lockish && (this._allChargers || looksLikeCharger(id, fname));
-      if (!alarm && !charger && !id.startsWith("light.")) continue;
-      const reg = h.entities?.[id] as { hidden?: boolean; entity_category?: string | null } | undefined;
-      if (reg?.hidden || reg?.entity_category) continue;
-      rows.push({
-        id,
-        name: h.formatEntityName?.(e as HassEntity) || (e.attributes.friendly_name as string) || id,
-        area: areaOf(h, id) ?? t(h, "other_area"),
-        group: !alarm && !charger && isGroup(e),
-        on: !alarm && !charger && isOn(e),
-        alarm,
-        charger,
-      });
-    }
-    const q = this._q.trim().toLowerCase();
-    return rows
-      .filter((r) => !q || r.name.toLowerCase().includes(q) || r.area.toLowerCase().includes(q))
-      .sort((a, b) => Number(b.group) - Number(a.group) || a.area.localeCompare(b.area) || a.name.localeCompare(b.name));
+    return t(this.hass, "add_card");
   }
 
   protected renderContent() {
-    const rows = this._rows();
-    const alarms = rows.filter((r) => r.alarm);
-    const chargers = rows.filter((r) => r.charger);
-    const groups = rows.filter((r) => r.group);
-    const byArea = new Map<string, Row[]>();
-    for (const r of rows.filter((r) => !r.group && !r.alarm && !r.charger)) {
-      if (!byArea.has(r.area)) byArea.set(r.area, []);
-      byArea.get(r.area)!.push(r);
-    }
+    const q = this._q.trim().toLowerCase();
+    const match = (k: StringKey, d?: StringKey) => !q || t(this.hass, k).toLowerCase().includes(q) || (d && t(this.hass, d).toLowerCase().includes(q));
+    const types = TYPES.filter((x) => match(x.name, x.desc));
+    // A type with nothing to show in this house is greyed out with the reason.
+    const missing = (type: CardType): StringKey | undefined =>
+      type === "alarm" && !Object.keys(this.hass.states).some((id) => id.startsWith("alarm_control_panel.")) ? "alarm_missing" : undefined;
+    const soon = SOON.filter((x) => match(x.name));
     return html`
       <label class="search">
         ${searchIcon()}
-        <input
-          type="search"
-          placeholder=${t(this.hass, "search_lights")}
-          .value=${this._q}
-          @input=${(ev: Event) => (this._q = (ev.target as HTMLInputElement).value)}
-        />
+        <input type="search" placeholder=${t(this.hass, "search_card_types")} .value=${this._q}
+          @input=${(ev: Event) => (this._q = (ev.target as HTMLInputElement).value)} />
       </label>
       <div class="scroll">
-        ${!rows.length ? html`<p class="empty">${t(this.hass, "no_lights")}</p>` : nothing}
-        ${alarms.length ? this._section(t(this.hass, "security"), alarms) : nothing}
-        ${chargers.length ? this._section(t(this.hass, "ev_charger"), chargers) : nothing}
-        ${groups.length ? this._section(t(this.hass, "light_groups"), groups) : nothing}
-        ${[...byArea].map(([area, list]) => this._section(area, list))}
-        ${this._allChargers
-          ? nothing
-          : html`<button class="more" @click=${() => (this._allChargers = true)}>${evChargerIcon(18)}<span>${t(this.hass, "add_charger_other")}</span></button>`}
+        ${types.length
+          ? html`<section>
+              <h3>${t(this.hass, "available")}</h3>
+              <div class="list">
+                ${types.map((x) => {
+                  const why = missing(x.type);
+                  return html`<button class="row ${why ? "soon" : ""}" ?disabled=${!!why} @click=${() => {
+                    this.close();
+                    this.onType?.(x.type);
+                  }}>
+                    <span class="ic" style="background:${why ? "rgba(255,255,255,.14)" : x.color}">${x.icon()}</span>
+                    <span class="nm">${t(this.hass, x.name)}<small>${t(this.hass, why ?? x.desc)}</small></span>
+                    ${why ? nothing : html`<span class="chev">${chevronIcon(false, 16)}</span>`}
+                  </button>`;
+                })}
+              </div>
+            </section>`
+          : nothing}
+        ${soon.length
+          ? html`<section>
+              <h3>${t(this.hass, "coming_soon")}</h3>
+              <div class="list">
+                ${soon.map(
+                  (x) => html`<div class="row soon">
+                    <span class="ic">${x.icon()}</span>
+                    <span class="nm">${t(this.hass, x.name)}<small>${t(this.hass, "coming_soon")}</small></span>
+                  </div>`,
+                )}
+              </div>
+            </section>`
+          : nothing}
       </div>
     `;
-  }
-
-  private _section(title: string, rows: Row[]) {
-    return html`<section>
-      <h3>${title}</h3>
-      <div class="list">
-        ${rows.map((r) => {
-          const added = this.existing.has(r.id);
-          return html`<button class="row" ?disabled=${added} @click=${() => this._pick(r.id)}>
-            <span class="ic ${r.on ? "on" : ""}">${r.alarm ? shieldIcon(20) : r.charger ? evChargerIcon(20) : bulbIcon(r.on, 20)}</span>
-            <span class="nm">${r.name}${r.group ? html`<small>${t(this.hass, "group")}</small>` : nothing}</span>
-            ${added ? html`<span class="added">${checkIcon(16)} ${t(this.hass, "added")}</span>` : nothing}
-          </button>`;
-        })}
-      </div>
-    </section>`;
-  }
-
-  private _pick(id: string) {
-    this.onPick?.(id);
-    this.close();
   }
 
   static styles = [
@@ -161,81 +132,53 @@ export class TerralAddSheet extends TerralSheet {
         align-items: center;
         gap: 12px;
         padding: 10px 14px;
-        min-height: 56px;
+        min-height: 60px;
         box-sizing: border-box;
       }
       .row + .row {
         border-top: 1px solid rgba(255, 255, 255, 0.08);
       }
-      .row:active:not(:disabled) {
+      button.row:active {
         background: rgba(255, 255, 255, 0.08);
       }
+      .soon {
+        opacity: 0.45;
+      }
       .ic {
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.14);
+        color: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
         flex: none;
       }
-      .ic.on {
-        background: #f3b24a;
-        color: #fff;
-      }
       .nm {
         flex: 1;
         min-width: 0;
-        font-size: 15px;
-        font-weight: 500;
+        font-size: 16px;
+        font-weight: 600;
         display: flex;
         flex-direction: column;
       }
       .nm small {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 400;
         color: rgba(255, 255, 255, 0.6);
       }
-      .added {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.6);
-      }
-      .row:disabled .ic,
-      .row:disabled .nm {
-        opacity: 0.55;
-      }
-      .more {
-        width: 100%;
-        margin-top: 16px;
-        min-height: 48px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.08);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.85);
-      }
-      .empty {
-        text-align: center;
-        color: rgba(255, 255, 255, 0.65);
-        margin: 30px 0;
+      .chev {
+        opacity: 0.6;
       }
     `,
   ];
 }
 
-export function openAddSheet(hass: HomeAssistant, existing: Set<string>, onPick: (id: string) => void) {
+export function openAddSheet(hass: HomeAssistant, onType: (type: CardType) => void) {
   const el = document.createElement("terral-add-sheet");
   el.hass = hass;
-  el.existing = existing;
-  el.onPick = onPick;
+  el.onType = onType;
   document.body.appendChild(el);
   return el;
 }

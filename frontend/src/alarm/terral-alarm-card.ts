@@ -14,6 +14,7 @@ import { alertIcon, closeIcon, lockIcon, shieldCheckIcon, shieldIcon, unlockIcon
 import { REFUSAL_EVENT, alarmTexts, arm, clearRefusal, countdown, disarm, modeLabel, refusalFor } from "./alarm-actions";
 import { CARD_MODES, type AlarmMode, currentMode, delayTotal, enabledModes, modeTint, phase, secondsLeft } from "./alarm-model";
 import { modeIcon, openAlarmDialog, updateAlarmDialog } from "./terral-alarm-dialog";
+import { openCardSettings } from "../panel/terral-card-config";
 
 export interface TerralAlarmCardConfig extends LovelaceCardConfig {
   entity: string;
@@ -114,7 +115,9 @@ export class TerralAlarmCard extends LitElement {
   private _getHass = () => this.hass;
 
   private _openWindow() {
-    if (this.hass && this._config) openAlarmDialog(this.hass, this._config.entity, this._name);
+    if (this.hass && this._config) {
+      openAlarmDialog(this.hass, this._config.entity, this._name, () => this.hass && this._config && openCardSettings(this, this.hass, "alarm", this._config));
+    }
   }
 
   private _down = (ev: PointerEvent) => {

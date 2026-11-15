@@ -4,7 +4,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import type { HassEntity, HomeAssistant } from "../ha-types";
 import { lang, relativeTime, t } from "../i18n";
-import { bulbIcon, chevronIcon, closeIcon, powerIcon, sunIcon } from "../shared/icons";
+import { bulbIcon, chevronIcon, closeIcon, gearIcon, powerIcon, sunIcon } from "../shared/icons";
 import "../shared/terral-slider";
 import { lockBackgroundScroll } from "../shared/scroll-lock";
 import {
@@ -37,6 +37,8 @@ export interface LightDialogOptions {
   useLightColor?: boolean;
   favorites?: { name?: string; rgb: RGB }[];
   groupByArea?: "auto" | "always" | "never";
+  /** Shows the gear; opens the card settings. */
+  onSettings?: () => void;
 }
 
 let current: TerralLightDialog | undefined;
@@ -192,6 +194,13 @@ export class TerralLightDialog extends LitElement {
             <strong>${this._name(e)}</strong>
             <span>${this._stateText(e)}${areaOf(this.hass, e.entity_id) ? ` · ${areaOf(this.hass, e.entity_id)}` : ""}</span>
           </div>
+          ${this.opts.onSettings
+            ? html`<button class="round gear" aria-label=${t(this.hass, "settings")} @click=${() => {
+                const go = this.opts.onSettings!;
+                this.close();
+                go();
+              }}>${gearIcon(this._wide ? 22 : 18)}</button>`
+            : nothing}
           <button class="round close" aria-label=${t(this.hass, "close")} @click=${() => this.close()}>
             ${closeIcon(this._wide ? 22 : 16)}
           </button>

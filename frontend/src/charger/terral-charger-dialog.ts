@@ -36,31 +36,26 @@ type Field = "entity" | "status_entity" | "power_entity" | "energy_entity";
 export class TerralChargerDialog extends TerralSheet {
   @property({ attribute: false }) config!: ChargerConfig;
   @property() name = "";
-  @property() view: "main" | "settings" = "main";
-  @property({ attribute: false }) onConfig?: (cfg: ChargerConfig) => boolean;
+  @property({ attribute: false }) onSettings?: () => void;
   @state() private _sessions?: Session[];
   @state() private _histError = false;
-  @state() private _pick?: Field;
-  @state() private _q = "";
-  @state() private _localOnly = false;
   private _histFor?: string;
 
   protected get heading() {
-    return this.view === "settings" ? t(this.hass, "settings") : this.name;
-  }
-
-  protected renderHeaderStart() {
-    if (this.view !== "settings") return nothing;
-    return html`<button class="hbtn" aria-label=${t(this.hass, "back")} @click=${() => (this.view = "main")}>${backIcon()}</button>`;
+    return this.name;
   }
 
   protected renderHeaderEnd() {
-    if (this.view === "settings") return nothing;
-    return html`<button class="hbtn" aria-label=${t(this.hass, "settings")} @click=${() => (this.view = "settings")}>${gearIcon(19)}</button>`;
+    if (!this.onSettings) return nothing;
+    return html`<button class="hbtn" aria-label=${t(this.hass, "settings")} @click=${() => {
+      const go = this.onSettings!;
+      this.close();
+      go();
+    }}>${gearIcon(19)}</button>`;
   }
 
   protected updated(): void {
-    if (this.view !== "main" || !this.hass) return;
+    if (!this.hass) return;
     const power = resolveEntities(this.hass, this.config).power;
     if (power && power !== this._histFor) {
       this._histFor = power;
@@ -79,17 +74,8 @@ export class TerralChargerDialog extends TerralSheet {
     }
   }
 
-  private _save(patch: Partial<ChargerConfig>) {
-    const cfg = { ...this.config, ...patch };
-    for (const k of Object.keys(cfg) as (keyof ChargerConfig)[]) if (cfg[k] === undefined || cfg[k] === "") delete cfg[k];
-    this.config = cfg;
-    this._histFor = undefined;
-    const stored = this.onConfig?.(cfg) ?? false;
-    this._localOnly = !stored;
-  }
-
   protected renderContent() {
-    return this.view === "settings" ? this._settings() : this._main();
+    return this._main();
   }
 
   // ---- Main ---------------------------------------------------------------------
@@ -177,127 +163,6 @@ export class TerralChargerDialog extends TerralSheet {
           : nothing}
       </div>
     `;
-  }
-
-  // ---- Settings -----------------------------------------------------------------
-
-  private _candidates(field: Field): string[] {
-    const h = this.hass;
-    const test: Record<Field, (id: string) => boolean> = {
-      entity: (id) => LOCK_DOMAINS.includes(domainOf(id)),
-      status_entity: (id) => isStatusSensor(h, id),
-      power_entity: (id) => isPowerSensor(h, id),
-      energy_entity: (id) => isEnergySensor(h, id),
-    };
-    const same = new Set(siblings(h, this.config.entity));
-    const nameOf = (id: string) => String(h.states[id]?.attributes.friendly_name ?? id);
-    const q = this._q.trim().toLowerCase();
-    return Object.keys(h.states)
-      .filter((id) => {
-        const reg = h.entities?.[id] as { hidden?: boolean } | undefined;
-        return !reg?.hidden && test[field](id);
-      })
-      .filter((id) => !q || id.toLowerCase().includes(q) || nameOf(id).toLowerCase().includes(q))
-      .sort((a, b) => {
-        const rank = (id: string) => (same.has(id) || id === this.config.entity ? 0 : looksLikeCharger(id, nameOf(id)) ? 1 : 2);
-        return rank(a) - rank(b) || nameOf(a).localeCompare(nameOf(b));
-      })
-      .slice(0, 60);
-  }
-
-  private _picker(field: Field) {
-    const h = this.hass;
-    const list = this._candidates(field);
-    const cur = this.config[field];
-    const nameOf = (id: string) => String(h.states[id]?.attributes.friendly_name ?? id);
-    const choose = (value?: string) => {
-      this._save({ [field]: value } as Partial<ChargerConfig>);
-      this._pick = undefined;
-      this._q = "";
-    };
-    return html`<div class="picker">
-      <label class="search">${searchIcon(16)}<input
-        type="search"
-        placeholder=${t(h, "search_entities")}
-        .value=${this._q}
-        @input=${(ev: Event) => (this._q = (ev.target as HTMLInputElement).value)}
-      /></label>
-      ${field !== "entity"
-        ? html`<button class="opt ${!cur ? "sel" : ""}" @click=${() => choose(undefined)}><span>${t(h, "auto")}</span><span class="ck">${checkIcon(18)}</span></button>
-            <button class="opt ${cur === "none" ? "sel" : ""}" @click=${() => choose("none")}><span>${t(h, "none")}</span><span class="ck">${checkIcon(18)}</span></button>`
-        : nothing}
-      ${list.map(
-        (id) => html`<button class="opt ${cur === id ? "sel" : ""}" @click=${() => choose(id)}>
-          <span>${nameOf(id)}<small>${id}</small></span><span class="ck">${checkIcon(18)}</span>
-        </button>`,
-      )}
-    </div>`;
-  }
-
-  private _row(field: Field, label: string, auto?: string) {
-    const h = this.hass;
-    const cur = this.config[field];
-    const shown = cur === "none" ? t(h, "none") : cur ? String(h.states[cur]?.attributes.friendly_name ?? cur) : auto ? `${t(h, "auto")} · ${h.states[auto]?.attributes.friendly_name ?? auto}` : t(h, "auto");
-    const open = this._pick === field;
-    return html`<button class="li" aria-expanded=${open} @click=${() => {
-      this._pick = open ? undefined : field;
-      this._q = "";
-    }}>
-      <span class="nm">${label}${field === "entity" && cur ? html`<small>${cur}</small>` : nothing}</span>
-      <span class="val">${shown}${chevronIcon(open, 16)}</span>
-    </button>
-    ${open ? this._picker(field) : nothing}`;
-  }
-
-  private _settings(): TemplateResult {
-    const h = this.hass;
-    const id = this.config.entity;
-    const lockish = isLockDomain(id);
-    const a = t(h, lockish ? "raw_locked" : "raw_on");
-    const b = t(h, lockish ? "raw_unlocked" : "raw_off");
-    const activeIsLocked = lockedRaw(id, !!this.config.invert) === "active";
-    const L = t(h, "ch_locked");
-    const U = t(h, "ch_unlocked");
-    const auto = resolveEntities(h, { entity: id });
-    return html`<div class="scroll">
-      <section>
-        <h3>${t(h, "ch_lock_section")}</h3>
-        <div class="list">
-          ${this._row("entity", t(h, "ch_entity"))}
-          <button class="li" role="switch" aria-checked=${!!this.config.invert} @click=${() => this._save({ invert: !this.config.invert })}>
-            <span class="nm">${t(h, "ch_invert")}<small>${t(h, "ch_invert_sub", { a, b })}</small></span>
-            <span class="tog ${this.config.invert ? "on" : ""}"></span>
-          </button>
-        </div>
-      </section>
-      <p class="explain">${t(h, "ch_explain", { a, la: activeIsLocked ? L : U, b, lb: activeIsLocked ? U : L, press: activeIsLocked ? a : b })}</p>
-      <section>
-        <h3>${t(h, "ch_data")}</h3>
-        <div class="list">
-          ${this._row("status_entity", t(h, "ch_status"), auto.status)}
-          ${this._row("power_entity", t(h, "ch_power"), auto.power)}
-          ${this._row("energy_entity", t(h, "ch_energy"), auto.energy)}
-          <label class="li">
-            <span class="nm">${t(h, "ch_max")}</span>
-            <input
-              class="num"
-              type="number"
-              inputmode="decimal"
-              min="1"
-              max="50"
-              step="0.1"
-              placeholder="7,4"
-              .value=${this.config.max_power != null ? String(this.config.max_power) : ""}
-              @change=${(ev: Event) => {
-                const n = parseFloat((ev.target as HTMLInputElement).value.replace(",", "."));
-                this._save({ max_power: Number.isFinite(n) && n > 0 ? n : undefined });
-              }}
-            />
-          </label>
-        </div>
-      </section>
-      ${this._localOnly ? html`<p class="note">${t(h, "save_local")}</p>` : nothing}
-    </div>`;
   }
 
   static styles = [
@@ -639,20 +504,13 @@ export class TerralChargerDialog extends TerralSheet {
   ];
 }
 
-export function openChargerDialog(
-  hass: HomeAssistant,
-  config: ChargerConfig,
-  name: string,
-  view: "main" | "settings",
-  onConfig: (cfg: ChargerConfig) => boolean,
-) {
+export function openChargerDialog(hass: HomeAssistant, config: ChargerConfig, name: string, onSettings?: () => void) {
   document.querySelector("terral-charger-dialog")?.remove();
   const el = document.createElement("terral-charger-dialog");
   el.hass = hass;
   el.config = { ...config };
   el.name = name;
-  el.view = view;
-  el.onConfig = onConfig;
+  el.onSettings = onSettings;
   document.body.appendChild(el);
   return el;
 }

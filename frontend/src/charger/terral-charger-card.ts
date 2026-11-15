@@ -20,6 +20,7 @@ import {
   setLocked,
 } from "./charger-model";
 import { openChargerDialog, updateChargerDialog } from "./terral-charger-dialog";
+import { openCardSettings } from "../panel/terral-card-config";
 
 export type TerralChargerCardConfig = LovelaceCardConfig & ChargerConfig;
 type Size = "s11" | "s21" | "s22" | "s42";
@@ -166,16 +167,9 @@ export class TerralChargerCard extends LitElement {
 
   private _openWindow(view: "main" | "settings" = "main") {
     if (!this.hass || !this._config) return;
-    openChargerDialog(this.hass, this._config, this._name, view, (cfg) => this._applyConfig(cfg));
-  }
-
-  /** Settings changed in the window: tell the Terral panel to store them. */
-  private _applyConfig(cfg: ChargerConfig) {
-    this._config = { ...this._config!, ...cfg };
-    this._histFor = undefined;
-    const ev = new CustomEvent("terral-card-config", { detail: { config: cfg }, bubbles: true, composed: true, cancelable: true });
-    this.dispatchEvent(ev);
-    return ev.defaultPrevented;
+    const settings = () => this.hass && this._config && openCardSettings(this, this.hass, "charger", this._config);
+    if (view === "settings") return settings();
+    openChargerDialog(this.hass, this._config, this._name, settings);
   }
 
   private _down = (ev: PointerEvent) => {

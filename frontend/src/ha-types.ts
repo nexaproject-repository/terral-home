@@ -18,6 +18,10 @@ export interface HassEntityRegistryEntry {
 export interface HassDeviceRegistryEntry {
   id: string;
   area_id?: string | null;
+  name?: string | null;
+  name_by_user?: string | null;
+  manufacturer?: string | null;
+  model?: string | null;
 }
 
 export interface HassArea {
