@@ -1,11 +1,12 @@
 // Terral Home frontend entry point.
 // Nexa Projects by Manuel Escaño · MIT License.
-import "./view/terral-home-view";
 import "./light/terral-light-card";
-import "./strategy";
+import "./panel/terral-home-panel";
 import type { HomeAssistant } from "./ha-types";
 
-export const VERSION = "0.2.0";
+import { VERSION } from "./version";
+
+export { VERSION };
 
 interface CustomCardEntry {
   type: string;

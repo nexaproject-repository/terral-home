@@ -4,8 +4,12 @@ from __future__ import annotations
 
 DOMAIN = "terral_home"
 NAME = "Terral Home"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 # URL where the bundled frontend (cards, view, theme assets) is served.
 FRONTEND_URL_BASE = "/terral_home"
 FRONTEND_SCRIPT = "terral-home.js"
+
+# Full-screen Terral Home panel in the sidebar.
+PANEL_URL_PATH = "terral-home"
+PANEL_ICON = "mdi:home-roof"
