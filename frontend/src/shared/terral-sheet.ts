@@ -18,6 +18,13 @@ export abstract class TerralSheet extends LitElement {
 
   protected abstract get heading(): string;
   protected abstract renderContent(): TemplateResult | typeof nothing;
+  /** Optional buttons before the title (e.g. back) and before the close button (e.g. settings). */
+  protected renderHeaderStart(): TemplateResult | typeof nothing {
+    return nothing;
+  }
+  protected renderHeaderEnd(): TemplateResult | typeof nothing {
+    return nothing;
+  }
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -63,7 +70,9 @@ export abstract class TerralSheet extends LitElement {
       <div class="panel ${cls}" role="dialog" aria-modal="true" aria-label=${this.heading}>
         ${this._wide ? nothing : html`<div class="grab" @pointerdown=${this._grabDown} @pointerup=${this._grabUp}><span></span></div>`}
         <header>
+          ${this.renderHeaderStart()}
           <h2>${this.heading}</h2>
+          ${this.renderHeaderEnd()}
           <button class="close" aria-label=${t(this.hass, "close")} @click=${() => this.close()}>${closeIcon(this._wide ? 22 : 18)}</button>
         </header>
         <div class="content">${this.renderContent()}</div>
@@ -192,9 +201,20 @@ export abstract class TerralSheet extends LitElement {
       justify-content: center;
       flex: none;
     }
-    .modal .close {
+    .modal .close,
+    .modal .hbtn {
       width: 52px;
       height: 52px;
+    }
+    .hbtn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.14);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
     }
     .content {
       min-height: 0;

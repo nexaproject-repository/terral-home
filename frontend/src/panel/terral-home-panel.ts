@@ -15,6 +15,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { fireEvent, type HomeAssistant } from "../ha-types";
 import { t } from "../i18n";
 import { areaOf, isGroup } from "../light/light-model";
+import { guessInvert } from "../charger/charger-model";
 import { dotsIcon, linesIcon, menuIcon, minusIcon, plusIcon } from "../shared/icons";
 import { backgroundCss } from "../shared/backgrounds";
 import { openAddSheet } from "./terral-add-sheet";
@@ -24,7 +25,7 @@ import { VERSION } from "../version";
 
 export interface TerralCard {
   id: string;
-  type: "light" | "alarm";
+  type: "light" | "alarm" | "charger";
   entity: string;
   w: 1 | 2;
   h: 1 | 2 | 4;
@@ -68,6 +69,15 @@ const ALL_SIZES: CellSize[] = [
 ];
 
 const ROW_RATIO = 0.85;
+
+const CARD_TAGS: Record<string, string> = {
+  light: "terral-home-light",
+  alarm: "terral-home-alarm",
+  charger: "terral-home-charger",
+};
+
+/** Settings a card may store in the layout through "terral-card-config". */
+const CONFIG_KEYS = ["entity", "name", "invert", "status_entity", "power_entity", "energy_entity", "max_power"];
 
 // The Companion app paints the notch and home-bar areas with ONE solid colour
 // (the theme's primary background). We give it EDGE and fade the panel's
@@ -318,11 +328,11 @@ export class TerralHomePanel extends LitElement {
   private _element(c: TerralCard): CardEl {
     let el = this._els.get(c.id);
     if (!el) {
-      el = document.createElement(c.type === "alarm" ? "terral-home-alarm" : "terral-home-light") as unknown as CardEl;
+      el = document.createElement(CARD_TAGS[c.type] ?? "terral-home-light") as unknown as CardEl;
       this._els.set(c.id, el);
     }
     const { id: _id, type: _type, w, h, ...rest } = c;
-    const config = { ...rest, type: c.type === "alarm" ? "custom:terral-home-alarm" : "custom:terral-home-light", view_layout: { terral: { w, h } } };
+    const config = { ...rest, type: `custom:${CARD_TAGS[c.type] ?? "terral-home-light"}`, view_layout: { terral: { w, h } } };
     const key = JSON.stringify(config);
     if (el.dataset.cfg !== key) {
       try {
@@ -342,10 +352,18 @@ export class TerralHomePanel extends LitElement {
     if (!this.hass || !this._layout) return;
     openAddSheet(this.hass, new Set(this._allCards.map((c) => c.entity)), (entity) => {
       const e = this.hass?.states[entity];
-      const card: TerralCard = entity.startsWith("alarm_control_panel.")
-        ? { id: uid(), type: "alarm", entity, w: 2, h: 2 }
-        : { id: uid(), type: "light", entity, w: e && isGroup(e) ? 2 : 1, h: 2 };
+      const domain = entity.split(".")[0];
+      const card: TerralCard =
+        domain === "alarm_control_panel"
+          ? { id: uid(), type: "alarm", entity, w: 2, h: 2 }
+          : domain === "light"
+            ? { id: uid(), type: "light", entity, w: e && isGroup(e) ? 2 : 1, h: 2 }
+            : { id: uid(), type: "charger", entity, w: 2, h: 2, invert: guessInvert(this.hass!, entity) };
       this._update((l) => l.cards.push(card));
+      // A new charger opens straight on its settings, to check the lock entity and "invert".
+      if (card.type === "charger") {
+        setTimeout(() => (this._els.get(card.id) as unknown as { openSettings?: () => void })?.openSettings?.(), 400);
+      }
     });
   };
 
@@ -499,6 +517,25 @@ export class TerralHomePanel extends LitElement {
 
   // ---- Long press & drag --------------------------------------------------
 
+  /** A card changed its own settings (e.g. the charger's lock entity): store them. */
+  private _onCardConfig = (ev: Event) => {
+    const el = ev.target as HTMLElement;
+    const id = [...this._els].find(([, v]) => v === el)?.[0];
+    if (!id) return;
+    ev.preventDefault();
+    const cfg = (ev as CustomEvent<{ config: Record<string, unknown> }>).detail.config;
+    this._update((l) => {
+      for (const list of [l.cards, ...l.sections.map((s) => s.cards)]) {
+        const c = list.find((x) => x.id === id);
+        if (!c) continue;
+        for (const k of CONFIG_KEYS) {
+          if (cfg[k] === undefined || cfg[k] === "") delete c[k];
+          else c[k] = cfg[k];
+        }
+      }
+    });
+  };
+
   private _onHold = (ev: Event) => {
     const detail = (ev as CustomEvent<{ x: number; y: number }>).detail;
     const cell = ev.composedPath().find((n) => n instanceof HTMLElement && n.dataset.cid != null) as HTMLElement | undefined;
@@ -645,7 +682,7 @@ export class TerralHomePanel extends LitElement {
     const showTop = top.length > 0 || empty || (edit && (draggingCard || !sections.length));
     let shown = 0;
     return html`
-      <div class="scroller" style="background:${EDGE_FADES}${backgroundCss("crepusculo")}" @terral-card-hold=${this._onHold}>
+      <div class="scroller" style="background:${EDGE_FADES}${backgroundCss("crepusculo")}" @terral-card-hold=${this._onHold} @terral-card-config=${this._onCardConfig}>
         <div class="wrap ${edit ? "editing" : ""}">
           <div class="top">
             <button class="glass round" aria-label=${t(this.hass, "menu")} @click=${() => fireEvent(this, "hass-toggle-menu")}>

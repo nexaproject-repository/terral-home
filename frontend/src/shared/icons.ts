@@ -123,3 +123,13 @@ export const lockIcon = (size = 20) =>
 export const backspaceIcon = (size = 24) =>
   line(size, svg`<path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"></path><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"></path>`);
 export const skipIcon = (size = 20) => line(size, svg`<path d="M5 5l9 7-9 7z"></path><path d="M18 5v14"></path>`);
+
+// ---- EV charger -------------------------------------------------------------
+
+export const evChargerIcon = (size = 24) =>
+  line(size, svg`<path d="M5 21V5.5A2.5 2.5 0 0 1 7.5 3h5A2.5 2.5 0 0 1 15 5.5V21"></path><path d="M3 21h14"></path><path d="M15 10h1.5a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8.5L19 6"></path><path d="M10.5 6.5L8.6 10h2.8l-1.9 3.5"></path>`, 1.9);
+export const boltIcon = (size = 18) => line(size, svg`<path d="M13 2L4 14h7l-1 8 9-12h-7z"></path>`);
+export const batteryIcon = (size = 19) =>
+  line(size, svg`<rect x="3" y="7" width="16" height="10" rx="2.5"></rect><path d="M21 11v2"></path><path d="M7 10.5v3M10.5 10.5v3"></path>`);
+export const clockIcon = (size = 19) => line(size, svg`<circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path>`);
+export const backIcon = (size = 20) => line(size, svg`<path d="M15 6l-6 6 6 6"></path>`, 2.4);

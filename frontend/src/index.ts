@@ -2,6 +2,7 @@
 // Nexa Projects by Manuel Escaño · MIT License.
 import "./light/terral-light-card";
 import "./alarm/terral-alarm-card";
+import "./charger/terral-charger-card";
 import "./panel/terral-home-panel";
 import type { HomeAssistant } from "./ha-types";
 
@@ -41,6 +42,16 @@ if (!w.customCards.some((c) => c.type === "terral-home-alarm")) {
     documentationURL: "https://github.com/nexaproject-repository/terral-home",
     getEntitySuggestion: (_hass, entityId) =>
       entityId.startsWith("alarm_control_panel.") ? { config: { type: "custom:terral-home-alarm", entity: entityId } } : null,
+  });
+}
+
+if (!w.customCards.some((c) => c.type === "terral-home-charger")) {
+  w.customCards.push({
+    type: "terral-home-charger",
+    name: "Terral · Cargador",
+    description: "Cargador de coche eléctrico al estilo Terral Home / Terral Home EV charger",
+    preview: true,
+    documentationURL: "https://github.com/nexaproject-repository/terral-home",
   });
 }
 

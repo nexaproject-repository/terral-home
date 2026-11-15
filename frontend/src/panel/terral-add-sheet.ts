@@ -1,10 +1,11 @@
-// "Añadir accesorio": pick an alarm, a light or a light group to add to the panel.
+// "Añadir accesorio": pick an alarm, an EV charger, a light or a light group to add to the panel.
 import { css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HassEntity, HomeAssistant } from "../ha-types";
 import { t } from "../i18n";
 import { areaOf, isGroup, isOn } from "../light/light-model";
-import { bulbIcon, checkIcon, searchIcon, shieldIcon } from "../shared/icons";
+import { looksLikeCharger } from "../charger/charger-model";
+import { bulbIcon, checkIcon, evChargerIcon, searchIcon, shieldIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
 
 interface Row {
@@ -14,6 +15,7 @@ interface Row {
   group: boolean;
   on: boolean;
   alarm?: boolean;
+  charger?: boolean;
 }
 
 @customElement("terral-add-sheet")
@@ -21,6 +23,8 @@ export class TerralAddSheet extends TerralSheet {
   @property({ attribute: false }) existing = new Set<string>();
   @property({ attribute: false }) onPick?: (entityId: string) => void;
   @state() private _q = "";
+  /** Show every switch / lock as a possible charger. */
+  @state() private _allChargers = false;
 
   protected get heading() {
     return t(this.hass, "add_accessory");
@@ -31,16 +35,20 @@ export class TerralAddSheet extends TerralSheet {
     const rows: Row[] = [];
     for (const [id, e] of Object.entries(h.states)) {
       const alarm = id.startsWith("alarm_control_panel.");
-      if (!alarm && !id.startsWith("light.")) continue;
+      const lockish = /^(switch|lock|input_boolean)\./.test(id);
+      const fname = String(e.attributes.friendly_name ?? id);
+      const charger = lockish && (this._allChargers || looksLikeCharger(id, fname));
+      if (!alarm && !charger && !id.startsWith("light.")) continue;
       const reg = h.entities?.[id] as { hidden?: boolean; entity_category?: string | null } | undefined;
       if (reg?.hidden || reg?.entity_category) continue;
       rows.push({
         id,
         name: h.formatEntityName?.(e as HassEntity) || (e.attributes.friendly_name as string) || id,
         area: areaOf(h, id) ?? t(h, "other_area"),
-        group: !alarm && isGroup(e),
-        on: !alarm && isOn(e),
+        group: !alarm && !charger && isGroup(e),
+        on: !alarm && !charger && isOn(e),
         alarm,
+        charger,
       });
     }
     const q = this._q.trim().toLowerCase();
@@ -52,9 +60,10 @@ export class TerralAddSheet extends TerralSheet {
   protected renderContent() {
     const rows = this._rows();
     const alarms = rows.filter((r) => r.alarm);
+    const chargers = rows.filter((r) => r.charger);
     const groups = rows.filter((r) => r.group);
     const byArea = new Map<string, Row[]>();
-    for (const r of rows.filter((r) => !r.group && !r.alarm)) {
+    for (const r of rows.filter((r) => !r.group && !r.alarm && !r.charger)) {
       if (!byArea.has(r.area)) byArea.set(r.area, []);
       byArea.get(r.area)!.push(r);
     }
@@ -71,8 +80,12 @@ export class TerralAddSheet extends TerralSheet {
       <div class="scroll">
         ${!rows.length ? html`<p class="empty">${t(this.hass, "no_lights")}</p>` : nothing}
         ${alarms.length ? this._section(t(this.hass, "security"), alarms) : nothing}
+        ${chargers.length ? this._section(t(this.hass, "ev_charger"), chargers) : nothing}
         ${groups.length ? this._section(t(this.hass, "light_groups"), groups) : nothing}
         ${[...byArea].map(([area, list]) => this._section(area, list))}
+        ${this._allChargers
+          ? nothing
+          : html`<button class="more" @click=${() => (this._allChargers = true)}>${evChargerIcon(18)}<span>${t(this.hass, "add_charger_other")}</span></button>`}
       </div>
     `;
   }
@@ -84,7 +97,7 @@ export class TerralAddSheet extends TerralSheet {
         ${rows.map((r) => {
           const added = this.existing.has(r.id);
           return html`<button class="row" ?disabled=${added} @click=${() => this._pick(r.id)}>
-            <span class="ic ${r.on ? "on" : ""}">${r.alarm ? shieldIcon(20) : bulbIcon(r.on, 20)}</span>
+            <span class="ic ${r.on ? "on" : ""}">${r.alarm ? shieldIcon(20) : r.charger ? evChargerIcon(20) : bulbIcon(r.on, 20)}</span>
             <span class="nm">${r.name}${r.group ? html`<small>${t(this.hass, "group")}</small>` : nothing}</span>
             ${added ? html`<span class="added">${checkIcon(16)} ${t(this.hass, "added")}</span>` : nothing}
           </button>`;
@@ -194,6 +207,20 @@ export class TerralAddSheet extends TerralSheet {
       .row:disabled .ic,
       .row:disabled .nm {
         opacity: 0.55;
+      }
+      .more {
+        width: 100%;
+        margin-top: 16px;
+        min-height: 48px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.85);
       }
       .empty {
         text-align: center;
