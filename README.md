@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/brand/terral-home-logo.png" alt="Terral Home" width="420"></p>
+
 # Terral Home
 
 **Dashboard, Theme, Cards & Notifications for Home Assistant**
