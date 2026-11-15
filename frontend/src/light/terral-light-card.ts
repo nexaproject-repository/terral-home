@@ -190,10 +190,18 @@ export class TerralLightCard extends LitElement {
     this._held = false;
     this._holdStart = { x: ev.clientX, y: ev.clientY };
     clearTimeout(this._holdTimer);
+    const start = { x: ev.clientX, y: ev.clientY, pointerId: ev.pointerId };
     this._holdTimer = window.setTimeout(() => {
       this._held = true;
-      this._openWindow();
-    }, 550);
+      // The Terral panel cancels this event and enters move mode instead.
+      const hold = new CustomEvent("terral-card-hold", {
+        detail: start,
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      });
+      if (this.dispatchEvent(hold)) this._openWindow();
+    }, 500);
   };
 
   private _move = (ev: PointerEvent) => {
@@ -206,13 +214,20 @@ export class TerralLightCard extends LitElement {
     this._holdStart = undefined;
   };
 
-  /** Swallow the click that follows a long press. */
-  private _clickCapture = (ev: Event) => {
+  /** A tap anywhere but a control opens the window; the click after a long press is swallowed. */
+  private _cardClick = (ev: Event) => {
     if (this._held) {
       ev.stopPropagation();
       ev.preventDefault();
       this._held = false;
+      return;
     }
+    const root = ev.currentTarget;
+    for (const node of ev.composedPath()) {
+      if (node === root) break;
+      if (node instanceof HTMLElement && /^(BUTTON|INPUT|TERRAL-SLIDER|TERRAL-LIGHT-FAVS|A)$/.test(node.tagName)) return;
+    }
+    this._openWindow();
   };
 
   // ---- Render ------------------------------------------------------------
@@ -277,10 +292,10 @@ export class TerralLightCard extends LitElement {
       ${members.length && on ? html`<span class="badge">${members.filter((id) => isOn(this.hass!.states[id])).length}</span>` : nothing}
     </button>`;
 
-    const text = html`<button class="text" @click=${this._openWindow}>
+    const text = html`<div class="text">
       <span class="name">${this._name(e)}</span>
       <span class="state">${this._status(e, kind)}</span>
-    </button>`;
+    </div>`;
 
     return html`<div
       class="card ${size} ${on ? "on" : "off"} ${unavailable ? "unavailable" : ""}"
@@ -290,7 +305,16 @@ export class TerralLightCard extends LitElement {
       @pointerup=${this._cancelHold}
       @pointercancel=${this._cancelHold}
       @pointerleave=${this._cancelHold}
-      @click=${this._clickCapture}
+      role="button"
+      tabindex="0"
+      aria-label=${this._name(e)}
+      @click=${this._cardClick}
+      @keydown=${(ev: KeyboardEvent) => {
+        if ((ev.key === "Enter" || ev.key === " ") && ev.target === ev.currentTarget) {
+          ev.preventDefault();
+          this._openWindow();
+        }
+      }}
       @contextmenu=${(ev: Event) => ev.preventDefault()}
     >
       ${size === "s11" || size === "s21"
@@ -438,7 +462,11 @@ export class TerralLightCard extends LitElement {
       overflow: hidden;
       user-select: none;
       -webkit-user-select: none;
-      transition: background 0.25s, color 0.25s;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.25s, color 0.25s, transform 0.12s;
       --fg: #fff;
       --fg2: rgba(255, 255, 255, 0.75);
     }

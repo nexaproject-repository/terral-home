@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.2.0). Not ready for daily use yet.
+> 🚧 Early development (v0.3.0). Not ready for daily use yet.
 
 Terral Home brings a clean, glass-style look to Home Assistant, inspired by modern mobile home apps, plus a smart notification system that knows whether you are home, away or asleep.
 
@@ -36,35 +36,18 @@ Terral Home brings a clean, glass-style look to Home Assistant, inspired by mode
 3. Install **Terral Home** and restart Home Assistant.
 4. **Settings → Devices & services → Add integration → Terral Home**.
 
-## Getting started (v0.2)
+## Getting started (v0.3)
 
-v0.2 brings the **Terral view** and the **light card** (lights and HA light groups).
+After adding the integration, **Terral Home** appears in the sidebar. It is a full-screen page of its own (no Home Assistant toolbar):
 
-**One-click dashboard.** Settings → Dashboards → Add dashboard → **Terral Home**. It creates a dashboard with all your lights. To move or resize cards, open it, ⋮ → **Edit dashboard** → **Take control**.
+- It starts empty. Tap **+** (top right) or **Añadir accesorio** to add a light or light group.
+- Tap a card to open its window; tap the bulb to switch it on or off.
+- **Long-press** a card to arrange the home: drag cards to reorder, **−** removes one, the size button cycles 1/1 → 2/1 → 2/2 → 4/2, **Listo** finishes.
+- **···** opens the Terral menu (settings are coming).
 
-If Terral Home doesn't show up in that list, create an empty dashboard, open ⋮ → Edit dashboard → ⋮ → **Raw configuration editor** and paste:
+The layout is stored by the integration and shared by everyone in the house.
 
-```yaml
-strategy:
-  type: custom:terral-home
-```
-
-**Manual view.** Any view can use the Terral layout:
-
-```yaml
-views:
-  - type: custom:terral-home-view
-    title: Mi casa
-    background: crepusculo   # crepusculo | terral | mar | image URL
-    cards:
-      - type: custom:terral-home-light
-        entity: light.kitchen
-        view_layout:
-          terral: { w: 1, h: 2 }   # h/w: 1/1, 2/1, 2/2 or 4/2
-```
-
-In edit mode each card shows a toolbar: drag handle, size (cycles 1/1 → 2/1 → 2/2 → 4/2), edit and delete.
-
+The light card can also be used in any regular dashboard as `custom:terral-home-light`.
 ## Development
 
 - `custom_components/terral_home/`: the integration (Python). It also serves the frontend.

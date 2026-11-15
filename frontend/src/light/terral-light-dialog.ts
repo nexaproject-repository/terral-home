@@ -6,6 +6,7 @@ import type { HassEntity, HomeAssistant } from "../ha-types";
 import { lang, relativeTime, t } from "../i18n";
 import { bulbIcon, chevronIcon, closeIcon, powerIcon, sunIcon } from "../shared/icons";
 import "../shared/terral-slider";
+import { lockBackgroundScroll } from "../shared/scroll-lock";
 import {
   DEFAULT_FAVORITES,
   TEMP_PRESETS,
@@ -69,18 +70,21 @@ export class TerralLightDialog extends LitElement {
   @query("input[type=color]") private _picker?: HTMLInputElement;
 
   private _mq = window.matchMedia("(min-width: 600px)");
+  private _unlock?: () => void;
   private _grabY?: number;
 
   connectedCallback(): void {
     super.connectedCallback();
     this._mq.addEventListener("change", this._onMq);
     window.addEventListener("keydown", this._onKey);
+    this._unlock = lockBackgroundScroll(this);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._mq.removeEventListener("change", this._onMq);
     window.removeEventListener("keydown", this._onKey);
+    this._unlock?.();
     if (current === this) current = undefined;
   }
 
@@ -362,6 +366,9 @@ export class TerralLightDialog extends LitElement {
       position: fixed;
       inset: 0;
       z-index: 9999;
+      overscroll-behavior: contain;
+      -webkit-user-select: none;
+      user-select: none;
       font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
       color: #fff;
     }

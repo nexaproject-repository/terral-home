@@ -39,6 +39,10 @@ export interface HomeAssistant {
     data?: Record<string, unknown>,
     target?: Record<string, unknown>,
   ): Promise<unknown>;
+  callWS<T = unknown>(msg: Record<string, unknown>): Promise<T>;
+  connection: {
+    subscribeMessage<T>(callback: (msg: T) => void, msg: Record<string, unknown>): Promise<() => Promise<void>>;
+  };
   formatEntityState?(stateObj: HassEntity, state?: string): string;
   formatEntityName?(stateObj: HassEntity, name?: string): string;
 }
