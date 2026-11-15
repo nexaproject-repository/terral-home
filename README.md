@@ -36,6 +36,35 @@ Terral Home brings a clean, glass-style look to Home Assistant, inspired by mode
 3. Install **Terral Home** and restart Home Assistant.
 4. **Settings → Devices & services → Add integration → Terral Home**.
 
+## Getting started (v0.2)
+
+v0.2 brings the **Terral view** and the **light card** (lights and HA light groups).
+
+**One-click dashboard.** Settings → Dashboards → Add dashboard → **Terral Home**. It creates a dashboard with all your lights. To move or resize cards, open it, ⋮ → **Edit dashboard** → **Take control**.
+
+If Terral Home doesn't show up in that list, create an empty dashboard, open ⋮ → Edit dashboard → ⋮ → **Raw configuration editor** and paste:
+
+```yaml
+strategy:
+  type: custom:terral-home
+```
+
+**Manual view.** Any view can use the Terral layout:
+
+```yaml
+views:
+  - type: custom:terral-home-view
+    title: Mi casa
+    background: crepusculo   # crepusculo | terral | mar | image URL
+    cards:
+      - type: custom:terral-home-light
+        entity: light.kitchen
+        view_layout:
+          terral: { w: 1, h: 2 }   # h/w: 1/1, 2/1, 2/2 or 4/2
+```
+
+In edit mode each card shows a toolbar: drag handle, size (cycles 1/1 → 2/1 → 2/2 → 4/2), edit and delete.
+
 ## Development
 
 - `custom_components/terral_home/`: the integration (Python). It also serves the frontend.
