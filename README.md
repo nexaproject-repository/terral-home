@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.3.2). Not ready for daily use yet.
+> 🚧 Early development (v0.4.0). Not ready for daily use yet.
 
 Terral Home brings a clean, glass-style look to Home Assistant, inspired by modern mobile home apps, plus a smart notification system that knows whether you are home, away or asleep.
 
@@ -36,14 +36,15 @@ Terral Home brings a clean, glass-style look to Home Assistant, inspired by mode
 3. Install **Terral Home** and restart Home Assistant.
 4. **Settings → Devices & services → Add integration → Terral Home**.
 
-## Getting started (v0.3)
+## Getting started (v0.4)
 
 After adding the integration, **Terral Home** appears in the sidebar. It is a full-screen page of its own (no Home Assistant toolbar):
 
 - It starts empty. Tap **+** (top right) or **Añadir accesorio** to add a light or light group.
 - Tap a card to open its window; tap the bulb to switch it on or off.
 - **Long-press** a card to arrange the home: drag cards to reorder, **−** removes one, drag the bottom-right corner to resize (1/1, 2/1, 2/2, 4/2), **Listo** finishes.
-- **···** opens the Terral menu (settings are coming).
+- **Sections**: in move mode, **Añadir apartado** adds a titled section. Tap a section title to rename it, drag its three lines to move the whole block, drag cards between sections, **−** removes a section (you choose whether its cards stay).
+- **···** opens the Terral menu: create sections from your Home Assistant areas (settings are coming).
 
 The layout is stored by the integration and shared by everyone in the house.
 

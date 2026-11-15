@@ -1,20 +1,24 @@
 // Terral Home panel: full-screen page in HA's sidebar (no HA toolbar).
-// The integration stores the layout (cards, sizes, order); this element
-// shows it on a 2-column (phone) or 4-column (tablet and wider) grid.
+// The integration stores the layout (cards, sizes, order, sections); this
+// element shows it on a 2-column (phone) or 4-column (tablet and wider) grid.
 //
 // - Starts empty, with an "Añadir accesorio" tile.
 // - "+" adds a card; "···" opens the Terral menu.
-// - Long press on a card enters move mode (cards jiggle): drag to reorder,
-//   "−" removes, the corner grip resizes, "Listo" exits.
+// - Cards without a section go first; each section has a title and its cards.
+// - Long press on a card enters move mode (cards jiggle): drag cards (also
+//   between sections), "−" removes, the corner grip resizes; sections show
+//   "−", a tappable title to rename and three lines to move the whole block.
+//   "Listo" exits.
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { fireEvent, type HomeAssistant } from "../ha-types";
 import { t } from "../i18n";
-import { isGroup } from "../light/light-model";
-import { dotsIcon, menuIcon, minusIcon, plusIcon } from "../shared/icons";
+import { areaOf, isGroup } from "../light/light-model";
+import { dotsIcon, linesIcon, menuIcon, minusIcon, plusIcon } from "../shared/icons";
 import { backgroundCss } from "../shared/backgrounds";
 import { openAddSheet } from "./terral-add-sheet";
+import { openConfirmSheet } from "./terral-confirm-sheet";
 import { openMenuSheet } from "./terral-menu-sheet";
 import { VERSION } from "../version";
 
@@ -27,8 +31,17 @@ export interface TerralCard {
   [key: string]: unknown;
 }
 
-export interface TerralLayout {
+export interface TerralSection {
+  id: string;
+  title: string;
   cards: TerralCard[];
+  [key: string]: unknown;
+}
+
+export interface TerralLayout {
+  /** Cards without a section, shown first. */
+  cards: TerralCard[];
+  sections?: TerralSection[];
   [key: string]: unknown;
 }
 
@@ -42,6 +55,10 @@ type CardEl = HTMLElement & {
   setConfig(c: Record<string, unknown>): void;
   getTerralSizes?: () => CellSize[];
 };
+
+/** "top" = cards without a section; otherwise a section id. */
+type ListKey = string;
+const TOP: ListKey = "top";
 
 const ALL_SIZES: CellSize[] = [
   { w: 1, h: 1 },
@@ -57,7 +74,7 @@ const ROW_RATIO = 0.85;
 const CHROME_TOP = "#453f77";
 const CHROME_BOTTOM = "#2f5f89";
 
-const uid =() => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 @customElement("terral-home-panel")
 export class TerralHomePanel extends LitElement {
@@ -71,11 +88,13 @@ export class TerralHomePanel extends LitElement {
   @state() private _edit = false;
   @state() private _cols = 2;
   @state() private _rowH = 82;
-  @state() private _dragFrom?: number;
-  @state() private _dropAt?: number;
+  @state() private _drag?: { kind: "card" | "section"; id: string };
+  @state() private _dropCard?: { key: ListKey; targetId?: string };
+  @state() private _dropSection?: number;
   @state() private _dragDx = 0;
   @state() private _dragDy = 0;
-  @state() private _resize?: { i: number; w: number; h: number };
+  @state() private _resize?: { id: string; w: number; h: number };
+  @state() private _renaming?: string;
 
   private _colW = 160;
   private _gap = 10;
@@ -107,11 +126,11 @@ export class TerralHomePanel extends LitElement {
   }
 
   protected firstUpdated(): void {
-    // Block page scroll while a card is being dragged (incl. right after a long press).
-    this.renderRoot.querySelector(".grid")?.addEventListener(
+    // Block page scroll while something is being dragged (incl. right after a long press).
+    this.renderRoot.querySelector(".scroller")?.addEventListener(
       "touchmove",
       (ev) => {
-        if (this._dragFrom != null && ev.cancelable) ev.preventDefault();
+        if ((this._drag || this._resize) && ev.cancelable) ev.preventDefault();
       },
       { passive: false },
     );
@@ -121,6 +140,11 @@ export class TerralHomePanel extends LitElement {
     if (changed.has("hass") && this.hass) {
       if (!this._layout && !this._loading) this._load();
       for (const el of this._els.values()) el.hass = this.hass;
+    }
+    if (changed.has("_renaming") && this._renaming) {
+      const input = this.renderRoot.querySelector<HTMLInputElement>("input.rename");
+      input?.focus();
+      input?.select();
     }
   }
 
@@ -158,8 +182,9 @@ export class TerralHomePanel extends LitElement {
     }
   }
 
-  private _onKey =(ev: KeyboardEvent) => {
-    if (ev.key === "Escape" && this._edit && !document.querySelector("terral-add-sheet, terral-menu-sheet")) this._edit = false;
+  private _onKey = (ev: KeyboardEvent) => {
+    if (ev.key !== "Escape" || this._renaming) return;
+    if (this._edit && !document.querySelector("terral-add-sheet, terral-menu-sheet, terral-confirm-sheet")) this._edit = false;
   };
 
   // ---- Data ---------------------------------------------------------------
@@ -172,7 +197,7 @@ export class TerralHomePanel extends LitElement {
       this._error = undefined;
       this._unsub = this.hass.connection.subscribeMessage<TerralLayout>(
         (layout) => {
-          if (!this._pending && this._dragFrom == null) this._layout = layout;
+          if (!this._pending && !this._drag && !this._resize) this._layout = layout;
         },
         { type: "terral_home/layout/subscribe" },
       );
@@ -182,12 +207,12 @@ export class TerralHomePanel extends LitElement {
     }
   }
 
-  private async _save(cards: TerralCard[]) {
+  private async _save(layout: TerralLayout) {
     if (!this.hass) return;
-    this._layout = { ...(this._layout ?? {}), cards };
+    this._layout = layout;
     this._pending++;
     try {
-      await this.hass.callWS({ type: "terral_home/layout/save", layout: this._layout });
+      await this.hass.callWS({ type: "terral_home/layout/save", layout });
       this._error = undefined;
     } catch (err) {
       this._error = (err as { message?: string })?.message ?? String(err);
@@ -196,8 +221,39 @@ export class TerralHomePanel extends LitElement {
     }
   }
 
-  private get _cards(): TerralCard[] {
+  /** Apply a change to a copy of the layout and save it. */
+  private _update(change: (l: TerralLayout & { sections: TerralSection[] }) => void) {
+    const l = structuredClone(this._layout ?? { cards: [] }) as TerralLayout & { sections: TerralSection[] };
+    l.cards ??= [];
+    l.sections ??= [];
+    change(l);
+    this._save(l);
+  }
+
+  private get _top(): TerralCard[] {
     return this._layout?.cards ?? [];
+  }
+
+  private get _sections(): TerralSection[] {
+    return this._layout?.sections ?? [];
+  }
+
+  private get _allCards(): TerralCard[] {
+    return [...this._top, ...this._sections.flatMap((s) => s.cards)];
+  }
+
+  private static _list(l: TerralLayout & { sections: TerralSection[] }, key: ListKey): TerralCard[] | undefined {
+    return key === TOP ? l.cards : l.sections.find((s) => s.id === key)?.cards;
+  }
+
+  private _findCard(id: string): { key: ListKey; card: TerralCard } | undefined {
+    const top = this._top.find((c) => c.id === id);
+    if (top) return { key: TOP, card: top };
+    for (const s of this._sections) {
+      const card = s.cards.find((c) => c.id === id);
+      if (card) return { key: s.id, card };
+    }
+    return undefined;
   }
 
   // ---- Layout -------------------------------------------------------------
@@ -244,41 +300,125 @@ export class TerralHomePanel extends LitElement {
     return el;
   }
 
-  // ---- Actions ------------------------------------------------------------
+  // ---- Card actions -------------------------------------------------------
 
   private _add = () => {
     if (!this.hass || !this._layout) return;
-    openAddSheet(this.hass, new Set(this._cards.map((c) => c.entity)), (entity) => {
+    openAddSheet(this.hass, new Set(this._allCards.map((c) => c.entity)), (entity) => {
       const e = this.hass?.states[entity];
       const card: TerralCard = { id: uid(), type: "light", entity, w: e && isGroup(e) ? 2 : 1, h: 2 };
-      this._save([...this._cards, card]);
+      this._update((l) => l.cards.push(card));
     });
   };
 
   private _menu = () => {
     if (!this.hass) return;
-    openMenuSheet(this.hass, this.panel?.config?.version ?? VERSION, () => (this._edit = true));
+    openMenuSheet(this.hass, this.panel?.config?.version ?? VERSION, {
+      onEdit: () => (this._edit = true),
+      onRooms: () => this._confirmRooms(),
+    });
   };
 
-  private _remove(i: number) {
-    const cards = [...this._cards];
-    const [gone] = cards.splice(i, 1);
-    if (gone) this._els.delete(gone.id);
-    this._save(cards);
+  private _remove(id: string) {
+    this._els.delete(id);
+    this._update((l) => {
+      l.cards = l.cards.filter((c) => c.id !== id);
+      for (const s of l.sections) s.cards = s.cards.filter((c) => c.id !== id);
+    });
+  }
+
+  // ---- Section actions ----------------------------------------------------
+
+  private _addSection = () => {
+    const id = uid();
+    this._update((l) => l.sections.push({ id, title: t(this.hass, "new_section"), cards: [] }));
+    this._renaming = id;
+  };
+
+  private _commitRename(id: string, value: string) {
+    if (this._renaming !== id) return;
+    this._renaming = undefined;
+    const title = value.trim();
+    const cur = this._sections.find((s) => s.id === id);
+    if (!cur || !title || title === cur.title) return;
+    this._update((l) => {
+      const s = l.sections.find((x) => x.id === id);
+      if (s) s.title = title;
+    });
+  }
+
+  private _removeSection(id: string) {
+    const idx = this._sections.findIndex((s) => s.id === id);
+    const sec = this._sections[idx];
+    if (!sec || !this.hass) return;
+    const drop = (keepCards: boolean) =>
+      this._update((l) => {
+        const i = l.sections.findIndex((s) => s.id === id);
+        if (i < 0) return;
+        const [gone] = l.sections.splice(i, 1);
+        if (keepCards) (i > 0 ? l.sections[i - 1].cards : l.cards).push(...gone.cards);
+        else gone.cards.forEach((c) => this._els.delete(c.id));
+      });
+    if (!sec.cards.length) return drop(false);
+    openConfirmSheet(this.hass, {
+      heading: t(this.hass, "delete_section_q", { name: sec.title }),
+      message: t(this.hass, "delete_section_msg", { n: sec.cards.length }),
+      actions: [
+        { label: t(this.hass, "keep_cards"), sub: t(this.hass, idx > 0 ? "keep_cards_sub" : "keep_cards_sub_top"), run: () => drop(true) },
+        { label: t(this.hass, "remove_cards"), danger: true, run: () => drop(false) },
+      ],
+    });
+  }
+
+  /** One section per HA area; each card with an area moves into it. */
+  private _confirmRooms() {
+    if (!this.hass) return;
+    openConfirmSheet(this.hass, {
+      heading: t(this.hass, "by_rooms"),
+      message: t(this.hass, "by_rooms_msg"),
+      actions: [{ label: t(this.hass, "by_rooms_go"), run: () => this._sectionsFromRooms() }],
+    });
+  }
+
+  private _sectionsFromRooms() {
+    const hass = this.hass;
+    if (!hass) return;
+    this._update((l) => {
+      const byTitle = new Map(l.sections.map((s) => [s.title.toLowerCase(), s]));
+      const lists: TerralCard[][] = [l.cards, ...l.sections.map((s) => s.cards)];
+      const moves: [TerralCard, string][] = [];
+      for (const list of lists) {
+        for (const c of [...list]) {
+          const area = areaOf(hass, c.entity);
+          if (!area) continue;
+          moves.push([c, area]);
+          list.splice(list.indexOf(c), 1);
+        }
+      }
+      const fresh = [...new Set(moves.map(([, a]) => a))]
+        .filter((a) => !byTitle.has(a.toLowerCase()))
+        .sort((a, b) => a.localeCompare(b));
+      for (const area of fresh) {
+        const s: TerralSection = { id: uid(), title: area, cards: [] };
+        l.sections.push(s);
+        byTitle.set(area.toLowerCase(), s);
+      }
+      for (const [c, area] of moves) byTitle.get(area.toLowerCase())!.cards.push(c);
+    });
+    this._edit = true;
   }
 
   // ---- Resize from the bottom-right corner --------------------------------
 
-  private _resizeDown(ev: PointerEvent, i: number) {
+  private _resizeDown(ev: PointerEvent, c: TerralCard) {
     ev.preventDefault();
     ev.stopPropagation();
     const handle = ev.currentTarget as HTMLElement;
     const r = (handle.closest(".cell") as HTMLElement).getBoundingClientRect();
-    const c = this._cards[i];
     const sizes = (this._els.get(c.id)?.getTerralSizes?.() ?? ALL_SIZES).filter((s) => s.w <= this._cols);
     this._resizeOrigin = { left: r.left, top: r.top, sizes };
     const cur = this._sizeOf(c);
-    this._resize = { i, w: cur.w, h: cur.h };
+    this._resize = { id: c.id, w: cur.w, h: cur.h };
     handle.setPointerCapture(ev.pointerId);
   }
 
@@ -305,12 +445,14 @@ export class TerralHomePanel extends LitElement {
     this._resize = undefined;
     this._resizeOrigin = undefined;
     if (!r) return;
-    const c = this._cards[r.i];
-    const cur = this._sizeOf(c);
+    const found = this._findCard(r.id);
+    if (!found) return;
+    const cur = this._sizeOf(found.card);
     if (cur.w === r.w && cur.h === r.h) return;
-    const cards = [...this._cards];
-    cards[r.i] = { ...c, w: r.w as 1 | 2, h: r.h as 1 | 2 | 4 };
-    this._save(cards);
+    this._update((l) => {
+      const c = TerralHomePanel._list(l, found.key)?.find((x) => x.id === r.id);
+      if (c) Object.assign(c, { w: r.w, h: r.h });
+    });
   }
 
   private _span(n: number, unit: number) {
@@ -321,23 +463,30 @@ export class TerralHomePanel extends LitElement {
 
   private _onHold = (ev: Event) => {
     const detail = (ev as CustomEvent<{ x: number; y: number }>).detail;
-    const cell = ev.composedPath().find((n) => n instanceof HTMLElement && n.dataset.i != null) as HTMLElement | undefined;
+    const cell = ev.composedPath().find((n) => n instanceof HTMLElement && n.dataset.cid != null) as HTMLElement | undefined;
     if (!cell) return;
     ev.preventDefault();
     this._edit = true;
     navigator.vibrate?.(12);
-    this._startDrag(Number(cell.dataset.i), detail.x, detail.y);
+    this._startDrag("card", cell.dataset.cid!, detail.x, detail.y);
   };
 
-  private _overlayDown(ev: PointerEvent, i: number) {
+  private _overlayDown(ev: PointerEvent, id: string) {
     if ((ev.target as HTMLElement).closest("button")) return;
     ev.preventDefault();
-    this._startDrag(i, ev.clientX, ev.clientY);
+    this._startDrag("card", id, ev.clientX, ev.clientY);
   }
 
-  private _startDrag(i: number, x: number, y: number) {
-    this._dragFrom = i;
-    this._dropAt = i;
+  private _handleDown(ev: PointerEvent, id: string) {
+    ev.preventDefault();
+    this._renaming = undefined;
+    this._startDrag("section", id, ev.clientX, ev.clientY);
+  }
+
+  private _startDrag(kind: "card" | "section", id: string, x: number, y: number) {
+    this._drag = { kind, id };
+    this._dropCard = undefined;
+    this._dropSection = undefined;
     this._dragStart = { x, y };
     this._dragDx = this._dragDy = 0;
     window.addEventListener("pointermove", this._dragMove);
@@ -346,36 +495,87 @@ export class TerralHomePanel extends LitElement {
   }
 
   private _dragMove = (ev: PointerEvent) => {
-    if (this._dragFrom == null || !this._dragStart) return;
+    if (!this._drag || !this._dragStart) return;
     this._dragDx = ev.clientX - this._dragStart.x;
     this._dragDy = ev.clientY - this._dragStart.y;
-    const hit = this.shadowRoot
-      ?.elementsFromPoint(ev.clientX, ev.clientY)
-      .find((el) => el instanceof HTMLElement && el.dataset.i != null && el.dataset.i !== String(this._dragFrom)) as
-      | HTMLElement
-      | undefined;
-    if (hit) this._dropAt = Number(hit.dataset.i);
+    if (this._drag.kind === "card") this._hitCard(ev.clientX, ev.clientY);
+    else this._hitSection(ev.clientY);
     this._autoScroll(ev.clientY);
   };
 
-  private _dragUp = () => {
-    const from = this._dragFrom;
-    const to = this._dropAt;
-    const moved = Math.hypot(this._dragDx, this._dragDy) > 8;
-    this._endDrag();
-    if (from != null && to != null && from !== to && moved) {
-      const cards = [...this._cards];
-      const [c] = cards.splice(from, 1);
-      cards.splice(to, 0, c);
-      this._save(cards);
+  private _hitCard(x: number, y: number) {
+    const els = (this.shadowRoot?.elementsFromPoint(x, y) ?? []) as HTMLElement[];
+    const cell = els.find((el) => el.dataset?.cid != null && el.dataset.cid !== this._drag?.id);
+    if (cell) {
+      this._dropCard = { key: cell.dataset.key!, targetId: cell.dataset.cid };
+      return;
     }
+    const zone = els.find((el) => el.dataset?.zone != null);
+    if (zone) this._dropCard = { key: zone.dataset.zone! };
+  }
+
+  private _hitSection(y: number) {
+    const boxes = [...this.renderRoot.querySelectorAll<HTMLElement>("section[data-sid]")].filter(
+      (el) => el.dataset.sid !== this._drag?.id,
+    );
+    this._dropSection = boxes.filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top + r.height / 2 < y;
+    }).length;
+  }
+
+  private _dragUp = () => {
+    const drag = this._drag;
+    const moved = Math.hypot(this._dragDx, this._dragDy) > 8;
+    const dropCard = this._dropCard;
+    const dropSection = this._dropSection;
+    this._endDrag();
+    if (!drag || !moved) return;
+    if (drag.kind === "card" && dropCard) this._moveCard(drag.id, dropCard.key, dropCard.targetId);
+    if (drag.kind === "section" && dropSection != null) this._moveSection(drag.id, dropSection);
   };
+
+  private _moveCard(id: string, key: ListKey, targetId?: string) {
+    const from = this._findCard(id);
+    if (!from || targetId === id) return;
+    this._update((l) => {
+      const src = TerralHomePanel._list(l, from.key)!;
+      const fromIdx = src.findIndex((c) => c.id === id);
+      const origTarget = targetId ? src.findIndex((c) => c.id === targetId) : -1;
+      const [card] = src.splice(fromIdx, 1);
+      const dst = TerralHomePanel._list(l, key);
+      if (!dst) {
+        src.splice(fromIdx, 0, card);
+        return;
+      }
+      if (!targetId) {
+        dst.push(card);
+        return;
+      }
+      const idx = dst.findIndex((c) => c.id === targetId);
+      // Same list, moving forward: take the target's place (land after it).
+      const after = from.key === key && origTarget > fromIdx;
+      dst.splice(idx < 0 ? dst.length : idx + (after ? 1 : 0), 0, card);
+    });
+  }
+
+  private _moveSection(id: string, index: number) {
+    const cur = this._sections.findIndex((s) => s.id === id);
+    if (cur < 0 || cur === index) return;
+    this._update((l) => {
+      const i = l.sections.findIndex((s) => s.id === id);
+      const [s] = l.sections.splice(i, 1);
+      l.sections.splice(Math.min(index, l.sections.length), 0, s);
+    });
+  }
 
   private _endDrag() {
     window.removeEventListener("pointermove", this._dragMove);
     window.removeEventListener("pointerup", this._dragUp);
     window.removeEventListener("pointercancel", this._dragUp);
-    this._dragFrom = this._dropAt = undefined;
+    this._drag = undefined;
+    this._dropCard = undefined;
+    this._dropSection = undefined;
     this._dragStart = undefined;
     this._dragDx = this._dragDy = 0;
   }
@@ -397,12 +597,18 @@ export class TerralHomePanel extends LitElement {
   // ---- Render -------------------------------------------------------------
 
   render() {
-    const cards = this._cards;
     const edit = this._edit;
     const loaded = !!this._layout;
+    const top = this._top;
+    const sections = this._sections;
+    const empty = loaded && !this._allCards.length;
+    const draggingCard = this._drag?.kind === "card";
+    const draggingSection = this._drag?.kind === "section";
+    const showTop = top.length > 0 || empty || (edit && (draggingCard || !sections.length));
+    let shown = 0;
     return html`
       <div class="scroller" style="background:${backgroundCss("crepusculo")}" @terral-card-hold=${this._onHold}>
-        <div class="wrap">
+        <div class="wrap ${edit ? "editing" : ""}">
           <div class="top">
             <button class="glass round" aria-label=${t(this.hass, "menu")} @click=${() => fireEvent(this, "hass-toggle-menu")}>
               ${menuIcon()}
@@ -420,45 +626,102 @@ export class TerralHomePanel extends LitElement {
           </div>
           <h1>${t(this.hass, "home_title")}</h1>
           ${this._error ? html`<p class="notice">${t(this.hass, "panel_error")} (${this._error})</p>` : nothing}
-          <div
-            class="grid ${edit ? "editing" : ""}"
-            style="grid-template-columns:repeat(${this._cols},minmax(0,1fr));grid-auto-rows:${this._rowH}px"
-          >
-            ${repeat(cards, (c) => c.id, (c, i) => this._cell(c, i, edit))}
-            ${loaded && (edit || !cards.length)
-              ? html`<button class="add" style="grid-row:span 2" @click=${this._add}>
-                  <span class="addic">${plusIcon(26)}</span><span>${t(this.hass, "add_accessory")}</span>
-                </button>`
-              : nothing}
-          </div>
+          ${showTop
+            ? this._grid(TOP, top, edit, empty || (edit && !sections.length), top.length === 0 && edit ? t(this.hass, "no_section") : undefined)
+            : nothing}
+          ${repeat(
+            sections,
+            (s) => s.id,
+            (s) => {
+              const lifted = draggingSection && this._drag?.id === s.id;
+              const lineBefore = draggingSection && !lifted && this._dropSection === shown;
+              if (!lifted) shown++;
+              if (!edit && !s.cards.length) return nothing;
+              return html`${lineBefore ? html`<div class="dropline"></div>` : nothing}${this._section(s, edit, lifted)}`;
+            },
+          )}
+          ${draggingSection && this._dropSection === shown ? html`<div class="dropline"></div>` : nothing}
+          ${edit && loaded
+            ? html`<button class="addsec" @click=${this._addSection}>${plusIcon(20)}<span>${t(this.hass, "add_section")}</span></button>`
+            : nothing}
         </div>
       </div>
     `;
   }
 
-  private _cell(c: TerralCard, i: number, edit: boolean) {
+  private _section(s: TerralSection, edit: boolean, lifted: boolean) {
+    const renaming = this._renaming === s.id;
+    const style = lifted ? `translate:0 ${this._dragDy}px` : "";
+    return html`<section class="sec ${lifted ? "lifted" : ""}" data-sid=${s.id} style=${style}>
+      <header>
+        ${edit ? html`<button class="sdel" aria-label=${t(this.hass, "delete_section")} @click=${() => this._removeSection(s.id)}>${minusIcon()}</button>` : nothing}
+        ${renaming
+          ? html`<input
+              class="rename"
+              .value=${s.title}
+              maxlength="40"
+              enterkeyhint="done"
+              @keydown=${(ev: KeyboardEvent) => {
+                if (ev.key === "Enter") this._commitRename(s.id, (ev.target as HTMLInputElement).value);
+                if (ev.key === "Escape") this._renaming = undefined;
+              }}
+              @blur=${(ev: FocusEvent) => this._commitRename(s.id, (ev.target as HTMLInputElement).value)}
+            />`
+          : edit
+            ? html`<button class="title" aria-label=${t(this.hass, "rename_section")} @click=${() => (this._renaming = s.id)}>${s.title}</button>`
+            : html`<h2>${s.title}</h2>`}
+        ${edit
+          ? html`<button
+              class="handle"
+              aria-label=${t(this.hass, "move_section")}
+              @pointerdown=${(ev: PointerEvent) => this._handleDown(ev, s.id)}
+            >${linesIcon()}</button>`
+          : nothing}
+      </header>
+      ${this._grid(s.id, s.cards, edit, false, edit && !s.cards.length ? t(this.hass, "drop_here") : undefined)}
+    </section>`;
+  }
+
+  private _grid(key: ListKey, cards: TerralCard[], edit: boolean, addTile: boolean, placeholder?: string) {
+    const zoneTarget = this._drag?.kind === "card" && this._dropCard?.key === key && !this._dropCard.targetId;
+    return html`<div
+      class="grid ${zoneTarget ? "zone-target" : ""} ${key === TOP ? "top-grid" : ""}"
+      data-zone=${key}
+      style="grid-template-columns:repeat(${this._cols},minmax(0,1fr));grid-auto-rows:${this._rowH}px"
+    >
+      ${repeat(cards, (c) => c.id, (c, i) => this._cell(key, c, i, edit))}
+      ${placeholder && !cards.length ? html`<div class="placeholder" style="grid-column:1/-1">${placeholder}</div>` : nothing}
+      ${addTile
+        ? html`<button class="add" style="grid-row:span 2" @click=${this._add}>
+            <span class="addic">${plusIcon(26)}</span><span>${t(this.hass, "add_accessory")}</span>
+          </button>`
+        : nothing}
+    </div>`;
+  }
+
+  private _cell(key: ListKey, c: TerralCard, i: number, edit: boolean) {
     const { w, h } = this._sizeOf(c);
-    const dragging = this._dragFrom === i;
-    const target = this._dropAt === i && this._dragFrom != null && !dragging;
+    const dragging = this._drag?.kind === "card" && this._drag.id === c.id;
+    const target = this._drag?.kind === "card" && this._dropCard?.targetId === c.id;
     const style = `grid-column:span ${w};grid-row:span ${h};--d:${(i % 5) * -0.07}s;${
       dragging ? `translate:${this._dragDx}px ${this._dragDy}px;z-index:5` : ""
     }`;
-    return html`<div class="cell ${dragging ? "dragging" : ""} ${target ? "target" : ""}" data-i=${i} style=${style}>
+    return html`<div class="cell ${dragging ? "dragging" : ""} ${target ? "target" : ""}" data-cid=${c.id} data-key=${key} style=${style}>
       ${this._element(c)}
       ${edit
-        ? html`<div class="overlay" @pointerdown=${(ev: PointerEvent) => this._overlayDown(ev, i)}>
-            <button class="del" aria-label=${t(this.hass, "delete")} @click=${() => this._remove(i)}>${minusIcon()}</button>
+        ? html`<div class="overlay" @pointerdown=${(ev: PointerEvent) => this._overlayDown(ev, c.id)}>
+            <button class="del" aria-label=${t(this.hass, "delete")} @click=${() => this._remove(c.id)}>${minusIcon()}</button>
             <button
               class="corner"
               aria-label=${t(this.hass, "resize")}
-              @pointerdown=${(ev: PointerEvent) => this._resizeDown(ev, i)}
+              @pointerdown=${(ev: PointerEvent) => this._resizeDown(ev, c)}
               @pointermove=${this._resizeMove}
               @pointerup=${this._resizeUp}
               @pointercancel=${this._resizeUp}
             ><span></span></button>
           </div>`
         : nothing}
-      ${this._resize?.i === i
+      ${this._resize?.id === c.id
         ? html`<div
             class="ghost"
             style="width:${this._span(this._resize.w, this._colW)}px;height:${this._span(this._resize.h, this._rowH)}px"
@@ -705,6 +968,126 @@ export class TerralHomePanel extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+    section.sec {
+      margin-top: 18px;
+      position: relative;
+      border-radius: 26px;
+    }
+    .editing section.sec {
+      margin: 14px -8px 0;
+      padding: 4px 8px 10px;
+      outline: 2px dashed rgba(255, 255, 255, 0.28);
+    }
+    section.sec.lifted {
+      z-index: 8;
+      scale: 1.02;
+      background: rgba(40, 44, 90, 0.55);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      outline: 2px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 24px 50px rgba(0, 0, 0, 0.45);
+    }
+    section.sec.lifted .cell {
+      animation: none;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      margin-bottom: 4px;
+    }
+    h2,
+    .title {
+      margin: 0;
+      flex: 1;
+      min-width: 0;
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .title {
+      text-decoration: underline dotted rgba(255, 255, 255, 0.45);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 6px;
+    }
+    input.rename {
+      flex: 1;
+      min-width: 0;
+      height: 38px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.18);
+      border: 2px solid rgba(255, 255, 255, 0.75);
+      color: #fff;
+      font: inherit;
+      font-size: 19px;
+      font-weight: 700;
+      padding: 0 10px;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .sdel {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(60, 62, 80, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+    }
+    .handle {
+      width: 48px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 4px;
+      box-sizing: border-box;
+      touch-action: none;
+      cursor: grab;
+      flex: none;
+    }
+    .dropline {
+      height: 5px;
+      border-radius: 3px;
+      background: #fff;
+      margin: 12px 4px -6px;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+    }
+    .grid.zone-target {
+      outline: 2px dashed rgba(255, 255, 255, 0.85);
+      outline-offset: 4px;
+      border-radius: 20px;
+    }
+    .placeholder {
+      min-height: 64px;
+      border-radius: 20px;
+      border: 2px dashed rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .addsec {
+      margin-top: 18px;
+      width: 100%;
+      height: 54px;
+      border-radius: 20px;
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
     }
   `;
 }

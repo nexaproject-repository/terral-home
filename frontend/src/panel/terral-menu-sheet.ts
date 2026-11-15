@@ -3,12 +3,12 @@ import { css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import type { HomeAssistant } from "../ha-types";
 import { t } from "../i18n";
-import { gearIcon, gripIcon } from "../shared/icons";
+import { gearIcon, gripIcon, roomsIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
 
 @customElement("terral-menu-sheet")
 export class TerralMenuSheet extends TerralSheet {
-  @property({ attribute: false }) onEdit?: () => void;
+  @property({ attribute: false }) actions: { onEdit?: () => void; onRooms?: () => void } = {};
   @property() version = "";
 
   protected get heading() {
@@ -19,10 +19,17 @@ export class TerralMenuSheet extends TerralSheet {
     return html`
       <div class="list">
         <button class="row" @click=${() => {
-          this.onEdit?.();
+          this.actions.onEdit?.();
           this.close();
         }}>
           <span class="ic">${gripIcon()}</span><span class="nm">${t(this.hass, "edit_home")}</span>
+        </button>
+        <button class="row" @click=${() => {
+          this.close();
+          this.actions.onRooms?.();
+        }}>
+          <span class="ic">${roomsIcon()}</span>
+          <span class="nm">${t(this.hass, "by_rooms")}<small>${t(this.hass, "by_rooms_sub")}</small></span>
         </button>
         <button class="row" disabled>
           <span class="ic">${gearIcon()}</span>
@@ -92,11 +99,11 @@ export class TerralMenuSheet extends TerralSheet {
   ];
 }
 
-export function openMenuSheet(hass: HomeAssistant, version: string, onEdit: () => void) {
+export function openMenuSheet(hass: HomeAssistant, version: string, actions: { onEdit?: () => void; onRooms?: () => void }) {
   const el = document.createElement("terral-menu-sheet");
   el.hass = hass;
   el.version = version;
-  el.onEdit = onEdit;
+  el.actions = actions;
   document.body.appendChild(el);
   return el;
 }

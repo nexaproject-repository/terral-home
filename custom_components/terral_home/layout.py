@@ -21,6 +21,7 @@ from .const import DOMAIN
 STORAGE_KEY = f"{DOMAIN}.layout"
 STORAGE_VERSION = 1
 MAX_CARDS = 300
+MAX_SECTIONS = 50
 
 CARD_SCHEMA = vol.Schema(
     {
@@ -33,9 +34,20 @@ CARD_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
+SECTION_SCHEMA = vol.Schema(
+    {
+        vol.Required("id"): vol.All(str, vol.Length(min=1, max=64)),
+        vol.Required("title"): vol.All(str, vol.Length(max=80)),
+        vol.Required("cards"): vol.All([CARD_SCHEMA], vol.Length(max=MAX_CARDS)),
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
 LAYOUT_SCHEMA = vol.Schema(
     {
+        # Cards without a section, shown first.
         vol.Required("cards"): vol.All([CARD_SCHEMA], vol.Length(max=MAX_CARDS)),
+        vol.Optional("sections"): vol.All([SECTION_SCHEMA], vol.Length(max=MAX_SECTIONS)),
     },
     extra=vol.ALLOW_EXTRA,
 )
