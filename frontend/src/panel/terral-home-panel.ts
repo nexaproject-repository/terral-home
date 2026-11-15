@@ -5,7 +5,7 @@
 // - Starts empty, with an "Añadir accesorio" tile.
 // - "+" adds a card; "···" opens the Terral menu.
 // - Long press on a card enters move mode (cards jiggle): drag to reorder,
-//   "−" removes, the size button cycles sizes, "Listo" exits.
+//   "−" removes, the corner grip resizes, "Listo" exits.
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
@@ -50,7 +50,9 @@ const ALL_SIZES: CellSize[] = [
   { w: 2, h: 4 },
 ];
 
-const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const ROW_RATIO = 0.85;
+
+const uid =() => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 @customElement("terral-home-panel")
 export class TerralHomePanel extends LitElement {
@@ -68,7 +70,11 @@ export class TerralHomePanel extends LitElement {
   @state() private _dropAt?: number;
   @state() private _dragDx = 0;
   @state() private _dragDy = 0;
+  @state() private _resize?: { i: number; w: number; h: number };
 
+  private _colW = 160;
+  private _gap = 10;
+  private _resizeOrigin?: { left: number; top: number; sizes: CellSize[] };
   private _els = new Map<string, CardEl>();
   private _ro?: ResizeObserver;
   private _unsub?: Promise<() => Promise<void>>;
@@ -161,7 +167,11 @@ export class TerralHomePanel extends LitElement {
     const inner = Math.min(width, 1180) - 2 * pad;
     const cols = width < 600 ? 2 : 4;
     const colW = (inner - gap * (cols - 1)) / cols;
-    const rowH = Math.max(56, Math.round((colW - gap) / 2));
+    // ROW_RATIO < 1 makes cards shorter than square (2 rows = colW × ratio).
+    const ratio = (window as unknown as { __terralRowRatio?: number }).__terralRowRatio ?? ROW_RATIO;
+    const rowH = Math.max(48, Math.round(((colW - gap) / 2) * ratio));
+    this._colW = colW;
+    this._gap = gap;
     if (cols !== this._cols) this._cols = cols;
     if (rowH !== this._rowH) this._rowH = rowH;
   }
@@ -216,16 +226,54 @@ export class TerralHomePanel extends LitElement {
     this._save(cards);
   }
 
-  private _cycleSize(i: number) {
+  // ---- Resize from the bottom-right corner --------------------------------
+
+  private _resizeDown(ev: PointerEvent, i: number) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const handle = ev.currentTarget as HTMLElement;
+    const r = (handle.closest(".cell") as HTMLElement).getBoundingClientRect();
     const c = this._cards[i];
-    const el = this._els.get(c.id);
-    const sizes = (el?.getTerralSizes?.() ?? ALL_SIZES).filter((s) => s.w <= this._cols);
+    const sizes = (this._els.get(c.id)?.getTerralSizes?.() ?? ALL_SIZES).filter((s) => s.w <= this._cols);
+    this._resizeOrigin = { left: r.left, top: r.top, sizes };
     const cur = this._sizeOf(c);
-    const idx = sizes.findIndex((s) => s.w === cur.w && s.h === cur.h);
-    const next = sizes[(idx + 1) % sizes.length];
+    this._resize = { i, w: cur.w, h: cur.h };
+    handle.setPointerCapture(ev.pointerId);
+  }
+
+  private _resizeMove(ev: PointerEvent) {
+    const o = this._resizeOrigin;
+    if (!this._resize || !o) return;
+    // Continuous size in cells under the finger, snapped to the closest allowed size.
+    const cw = (ev.clientX - o.left + this._gap) / (this._colW + this._gap);
+    const ch = (ev.clientY - o.top + this._gap) / (this._rowH + this._gap);
+    let best = o.sizes[0];
+    let bestD = Infinity;
+    for (const s of o.sizes) {
+      const d = (s.w - cw) ** 2 + (s.h - ch) ** 2;
+      if (d < bestD) [best, bestD] = [s, d];
+    }
+    if (best.w !== this._resize.w || best.h !== this._resize.h) {
+      this._resize = { ...this._resize, w: best.w, h: best.h };
+      navigator.vibrate?.(6);
+    }
+  }
+
+  private _resizeUp() {
+    const r = this._resize;
+    this._resize = undefined;
+    this._resizeOrigin = undefined;
+    if (!r) return;
+    const c = this._cards[r.i];
+    const cur = this._sizeOf(c);
+    if (cur.w === r.w && cur.h === r.h) return;
     const cards = [...this._cards];
-    cards[i] = { ...c, w: next.w as 1 | 2, h: next.h as 1 | 2 | 4 };
+    cards[r.i] = { ...c, w: r.w as 1 | 2, h: r.h as 1 | 2 | 4 };
     this._save(cards);
+  }
+
+  private _span(n: number, unit: number) {
+    return n * unit + (n - 1) * this._gap;
   }
 
   // ---- Long press & drag --------------------------------------------------
@@ -359,8 +407,21 @@ export class TerralHomePanel extends LitElement {
       ${edit
         ? html`<div class="overlay" @pointerdown=${(ev: PointerEvent) => this._overlayDown(ev, i)}>
             <button class="del" aria-label=${t(this.hass, "delete")} @click=${() => this._remove(i)}>${minusIcon()}</button>
-            <button class="size" aria-label="${t(this.hass, "size")} ${h}/${w}" @click=${() => this._cycleSize(i)}>${h}/${w}</button>
+            <button
+              class="corner"
+              aria-label=${t(this.hass, "resize")}
+              @pointerdown=${(ev: PointerEvent) => this._resizeDown(ev, i)}
+              @pointermove=${this._resizeMove}
+              @pointerup=${this._resizeUp}
+              @pointercancel=${this._resizeUp}
+            ><span></span></button>
           </div>`
+        : nothing}
+      ${this._resize?.i === i
+        ? html`<div
+            class="ghost"
+            style="width:${this._span(this._resize.w, this._colW)}px;height:${this._span(this._resize.h, this._rowH)}px"
+          ></div>`
         : nothing}
     </div>`;
   }
@@ -389,9 +450,10 @@ export class TerralHomePanel extends LitElement {
     svg {
       display: block;
     }
+    /* HA already pads the app for the notch and home bar; fill what's left. */
     .scroller {
-      height: 100vh;
-      height: 100dvh;
+      height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
       overflow-y: auto;
       overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
@@ -400,7 +462,7 @@ export class TerralHomePanel extends LitElement {
     .wrap {
       max-width: 1180px;
       margin: 0 auto;
-      padding: calc(12px + env(safe-area-inset-top)) 16px calc(48px + env(safe-area-inset-bottom));
+      padding: 12px 16px 48px;
       box-sizing: border-box;
     }
     @media (min-width: 600px) {
@@ -544,18 +606,40 @@ export class TerralHomePanel extends LitElement {
       justify-content: center;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
-    .size {
+    /* Corner grip: an arc hugging the card's bottom-right corner. */
+    .corner {
       position: absolute;
-      right: 8px;
-      bottom: 8px;
-      height: 30px;
-      padding: 0 11px;
-      border-radius: 15px;
-      background: rgba(20, 22, 44, 0.75);
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
-      font-size: 13px;
-      font-weight: 700;
+      right: -6px;
+      bottom: -6px;
+      width: 46px;
+      height: 46px;
+      touch-action: none;
+      cursor: nwse-resize;
+      z-index: 2;
+    }
+    .corner span {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      width: 26px;
+      height: 26px;
+      box-sizing: border-box;
+      border-right: 5px solid #fff;
+      border-bottom: 5px solid #fff;
+      border-bottom-right-radius: 22px;
+      filter: drop-shadow(0 0 1px rgba(20, 22, 44, 0.9)) drop-shadow(0 0 1px rgba(20, 22, 44, 0.9))
+        drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+    }
+    .ghost {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 6;
+      border-radius: 22px;
+      border: 2px dashed rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.12);
+      pointer-events: none;
+      transition: width 0.12s ease, height 0.12s ease;
     }
     .add {
       border-radius: 22px;

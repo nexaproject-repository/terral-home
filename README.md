@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.3.0). Not ready for daily use yet.
+> 🚧 Early development (v0.3.1). Not ready for daily use yet.
 
 Terral Home brings a clean, glass-style look to Home Assistant, inspired by modern mobile home apps, plus a smart notification system that knows whether you are home, away or asleep.
 
@@ -42,7 +42,7 @@ After adding the integration, **Terral Home** appears in the sidebar. It is a fu
 
 - It starts empty. Tap **+** (top right) or **Añadir accesorio** to add a light or light group.
 - Tap a card to open its window; tap the bulb to switch it on or off.
-- **Long-press** a card to arrange the home: drag cards to reorder, **−** removes one, the size button cycles 1/1 → 2/1 → 2/2 → 4/2, **Listo** finishes.
+- **Long-press** a card to arrange the home: drag cards to reorder, **−** removes one, drag the bottom-right corner to resize (1/1, 2/1, 2/2, 4/2), **Listo** finishes.
 - **···** opens the Terral menu (settings are coming).
 
 The layout is stored by the integration and shared by everyone in the house.
