@@ -69,10 +69,17 @@ const ALL_SIZES: CellSize[] = [
 
 const ROW_RATIO = 0.85;
 
-// Colours of the "crepúsculo" background at its top and bottom edges,
-// used to paint the notch and home-bar areas around the panel.
-const CHROME_TOP = "#453f77";
-const CHROME_BOTTOM = "#2f5f89";
+// The Companion app paints the notch and home-bar areas with ONE solid colour
+// (the theme's primary background). We give it EDGE and fade the panel's
+// background into that same colour at the top and bottom, so the bars and
+// the page join without a seam.
+const EDGE = "#3a4f80";
+const EDGE_RGB = "58,79,128";
+const EDGE_FADES =
+  `linear-gradient(180deg, ${EDGE} 0, rgba(${EDGE_RGB},.6) 36px, rgba(${EDGE_RGB},0) 120px), ` +
+  `linear-gradient(0deg, ${EDGE} 0, rgba(${EDGE_RGB},.6) 28px, rgba(${EDGE_RGB},0) 96px), `;
+const CHROME_TOP = EDGE;
+const CHROME_BOTTOM = EDGE;
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -163,13 +170,7 @@ export class TerralHomePanel extends LitElement {
       if (this._chromeSaved) return;
       this._chromeSaved = { meta: meta?.content ?? null, styles: els.map((el) => [el, el.getAttribute("style") ?? ""]) };
       for (const el of els) {
-        el.style.backgroundColor = CHROME_BOTTOM;
-        el.style.backgroundImage =
-          "linear-gradient(90deg, #53407e, #423f76 50%, #3b4074), linear-gradient(90deg, #2f688c, #2e5a86)";
-        el.style.backgroundSize = "100% 50%, 100% 100%";
-        el.style.backgroundRepeat = "no-repeat";
-        el.style.backgroundPosition = "top, bottom";
-        el.style.backgroundAttachment = "fixed";
+        el.style.background = EDGE;
       }
       // The Companion app paints the status-bar and home-bar areas natively
       // from the theme variables it reads off the page; point them at our
@@ -633,7 +634,7 @@ export class TerralHomePanel extends LitElement {
     const showTop = top.length > 0 || empty || (edit && (draggingCard || !sections.length));
     let shown = 0;
     return html`
-      <div class="scroller" style="background:${backgroundCss("crepusculo")}" @terral-card-hold=${this._onHold}>
+      <div class="scroller" style="background:${EDGE_FADES}${backgroundCss("crepusculo")}" @terral-card-hold=${this._onHold}>
         <div class="wrap ${edit ? "editing" : ""}">
           <div class="top">
             <button class="glass round" aria-label=${t(this.hass, "menu")} @click=${() => fireEvent(this, "hass-toggle-menu")}>
