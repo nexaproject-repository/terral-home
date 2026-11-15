@@ -52,6 +52,11 @@ const ALL_SIZES: CellSize[] = [
 
 const ROW_RATIO = 0.85;
 
+// Colours of the "crepúsculo" background at its top and bottom edges,
+// used to paint the notch and home-bar areas around the panel.
+const CHROME_TOP = "#453f77";
+const CHROME_BOTTOM = "#2f5f89";
+
 const uid =() => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 @customElement("terral-home-panel")
@@ -86,6 +91,7 @@ export class TerralHomePanel extends LitElement {
     super.connectedCallback();
     this._ro = new ResizeObserver(([entry]) => this._measure(entry.contentRect.width));
     this._ro.observe(this);
+    this._paintChrome(true);
     window.addEventListener("keydown", this._onKey);
   }
 
@@ -93,6 +99,7 @@ export class TerralHomePanel extends LitElement {
     super.disconnectedCallback();
     this._ro?.disconnect();
     window.removeEventListener("keydown", this._onKey);
+    this._paintChrome(false);
     this._unsub?.then((u) => u()).catch(() => undefined);
     this._unsub = undefined;
     this._loading = false;
@@ -117,7 +124,41 @@ export class TerralHomePanel extends LitElement {
     }
   }
 
-  private _onKey = (ev: KeyboardEvent) => {
+  /**
+   * HA leaves the notch and home-bar areas outside the panel and paints them
+   * with the theme colour. While Terral is open, paint them with our
+   * background instead (page background + the app's theme-color), and put
+   * everything back when leaving.
+   */
+  private _chromeSaved?: { meta: string | null; styles: [HTMLElement, string][] };
+
+  private _paintChrome(on: boolean) {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const els = [document.documentElement, document.body];
+    if (on) {
+      if (this._chromeSaved) return;
+      this._chromeSaved = { meta: meta?.content ?? null, styles: els.map((el) => [el, el.getAttribute("style") ?? ""]) };
+      for (const el of els) {
+        el.style.backgroundColor = CHROME_BOTTOM;
+        el.style.backgroundImage =
+          "linear-gradient(90deg, #53407e, #423f76 50%, #3b4074), linear-gradient(90deg, #2f688c, #2e5a86)";
+        el.style.backgroundSize = "100% 50%, 100% 100%";
+        el.style.backgroundRepeat = "no-repeat";
+        el.style.backgroundPosition = "top, bottom";
+        el.style.backgroundAttachment = "fixed";
+      }
+      if (meta) meta.content = CHROME_TOP;
+    } else if (this._chromeSaved) {
+      for (const [el, style] of this._chromeSaved.styles) {
+        if (style) el.setAttribute("style", style);
+        else el.removeAttribute("style");
+      }
+      if (meta && this._chromeSaved.meta != null) meta.content = this._chromeSaved.meta;
+      this._chromeSaved = undefined;
+    }
+  }
+
+  private _onKey =(ev: KeyboardEvent) => {
     if (ev.key === "Escape" && this._edit && !document.querySelector("terral-add-sheet, terral-menu-sheet")) this._edit = false;
   };
 
