@@ -494,6 +494,9 @@ const es = {
   vac_card_routines_sub: "Elige hasta 3, en el orden en que quieres verlas en la tarjeta 2/2. El icono del robot muestra todas.",
   vac_no_routines: "Este robot no tiene rutinas. Créalas en la app de Roborock o añade un script.",
   vac_scripts: "Scripts",
+  vac_confirm_q: "¿Empezar «{n}»?",
+  vac_confirm_msg: "{r} saldrá de la base ahora.",
+  vac_confirm_go: "Empezar",
   vac_entity: "Robot",
 };
 
@@ -990,6 +993,9 @@ const en: Strings = {
   vac_card_routines_sub: "Pick up to 3, in the order you want them on the 2/2 card. The robot icon shows them all.",
   vac_no_routines: "This robot has no routines. Create them in the Roborock app or add a script.",
   vac_scripts: "Scripts",
+  vac_confirm_q: "Start \"{n}\"?",
+  vac_confirm_msg: "{r} will leave the dock now.",
+  vac_confirm_go: "Start",
   vac_entity: "Robot",
 };
 

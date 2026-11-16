@@ -2,6 +2,9 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.17.3 — 2026-11-16
+- Robot vacuum: a routine (the buttons of the 2/2 card, the icon's list and the window) asks for confirmation before starting.
+
 ## 0.17.2 — 2026-11-16
 - Background: with few cards, the bottom fade sat right under them and left a band of a different colour below; the content now fills the screen so the fade is always at the bottom.
 

@@ -28,7 +28,7 @@ import {
   progress,
   remember,
   routineName,
-  runRoutine,
+  confirmRoutine,
   start,
   supports,
   toBase,
@@ -141,7 +141,7 @@ export class TerralVacuumCard extends LitElement {
     if (!list.length) return this._openWindow();
     openPop(anchor, list.map((id) => {
       const n = routineName(h, id, this._name);
-      return { label: n, icon: routineIcon(n, 21), run: () => runRoutine(h, id) };
+      return { label: n, icon: routineIcon(n, 21), run: () => confirmRoutine(h, id, n, this._name) };
     }));
   }
 
@@ -233,7 +233,7 @@ export class TerralVacuumCard extends LitElement {
           const n = routineName(h, id, this._name);
           return html`<button class="pb" ?disabled=${a === "unavailable"} @click=${(ev: Event) => {
             ev.stopPropagation();
-            runRoutine(h, id);
+            confirmRoutine(h, id, n, this._name);
           }}>${routineIcon(n, 16)}<span>${n}</span></button>`;
         })}
       </div>`;

@@ -12,6 +12,8 @@
 //   Rooms       read once with the roborock.get_maps action; a room clean is
 //               sent with vacuum.send_command app_segment_clean.
 import type { HassEntity, HomeAssistant } from "../ha-types";
+import { openConfirmSheet } from "../panel/terral-confirm-sheet";
+import { t } from "../i18n";
 
 export interface VacuumConfig {
   entity: string;
@@ -259,3 +261,12 @@ export function routineName(h: HomeAssistant, id: string, robotName?: string): s
 /** Vacuum-ish scripts offered in the settings next to the device routines. */
 export const isVacuumScript = (h: HomeAssistant, id: string) =>
   id.startsWith("script.") && /(aspir|robot|vacuum|roborock|limpi|freg|mop|clean)/i.test(id + " " + (h.states[id]?.attributes.friendly_name ?? ""));
+
+/** Asks before starting a routine (a tap by mistake would send the robot out). */
+export function confirmRoutine(h: HomeAssistant, id: string, name: string, robot: string) {
+  openConfirmSheet(h, {
+    heading: t(h, "vac_confirm_q", { n: name }),
+    message: t(h, "vac_confirm_msg", { r: robot }),
+    actions: [{ label: t(h, "vac_confirm_go"), run: () => runRoutine(h, id) }],
+  });
+}

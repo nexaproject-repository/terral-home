@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.17.2). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.17.3). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -131,7 +131,7 @@ For Met.no or any weather entity.
 For a robot that vacuums and/or mops. Made for [Roborock](https://www.home-assistant.io/integrations/roborock/), works with any vacuum entity (what the robot doesn't report is simply not shown).
 
 - **Sizes**: 1/1, 2/1 and 2/2. The icon is a round floor robot.
-- **Waiting** (docked or idle, glass card): 2/2 shows your **3 main routines** as buttons; the robot icon opens **every routine** (also on 1/1 and 2/1).
+- **Waiting** (docked or idle, glass card): 2/2 shows your **3 main routines** as buttons; the robot icon opens **every routine** (also on 1/1 and 2/1). Starting a routine asks for confirmation first.
 - **Cleaning** (teal): the icon pauses; 2/2 shows progress, area and time, pause and back to the dock. **Going home**: sky blue.
 - **Stuck / error** (red): the icon stays the same with a red **!** at its bottom-right; 2/2 offers resume, back to the dock and locate.
 - **Battery** in the text, with a small battery icon that empties by steps and turns amber below 40 % and red below 20 % (a bolt while charging on the dock).

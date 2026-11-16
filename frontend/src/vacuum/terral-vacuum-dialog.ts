@@ -28,7 +28,7 @@ import {
   parts,
   pause,
   routineName,
-  runRoutine,
+  confirmRoutine,
   selectOption,
   setCleanMode,
   setFan,
@@ -177,7 +177,7 @@ export class TerralVacuumDialog extends TerralSheet {
               <div class="chips">
                 ${routines.map((id) => {
                   const n = routineName(h, id, this.name);
-                  return html`<button ?disabled=${off || a === "cleaning"} @click=${() => runRoutine(h, id)}>${routineIcon(n, 16)}${n}</button>`;
+                  return html`<button ?disabled=${off || a === "cleaning"} @click=${() => confirmRoutine(h, id, n, this.name)}>${routineIcon(n, 16)}${n}</button>`;
                 })}
               </div>
             </section>`
