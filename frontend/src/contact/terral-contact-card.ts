@@ -1,8 +1,8 @@
 // Terral · Puertas y ventanas — a door / window / balcony door / garage contact
 // sensor, or a group of them.
-//   Closed: glass. Open: orange, with the icon swung open. Open longer than
-//   the alert time (or open while an alarm is armed): red, with a "!" and the
-//   time counting. Cover removed or knocked: red "!" on the icon even closed.
+//   Closed: glass. Open: orange, with the icon swung open and the time.
+//   Ventilation / tilted (recorded X / Y / Z positions, see the settings):
+//   blue, even though the contact still reads closed.
 //   Single sensor: 1/1, 2/1, 2/2 (today's open periods, temperature, battery).
 //   Group (`group` in the settings): every size up to 4/2; the open ones first.
 // A tap opens the window; a long press moves the card.
@@ -14,18 +14,19 @@ import { openCardSettings } from "../panel/terral-card-config";
 import { type Usage, fmtTime, todayUsage } from "../switch/switch-model";
 import {
   type ContactConfig,
-  TINT_ALERT,
-  TINT_OPEN,
+  type Look,
   contactIcon,
   fmtMins,
   isOpen,
   isUnavailable,
   kindIcon,
   kindOf,
+  lookIcon,
   lookOf,
-  openMinutes,
+  lookWord,
+  minutesIn,
   parts,
-  tampered,
+  tintOf,
 } from "./contact-model";
 import { openContactDialog, updateContactDialog } from "./terral-contact-dialog";
 
@@ -126,8 +127,11 @@ export class TerralContactCard extends LitElement {
     const old = changed.get("hass") as HomeAssistant | undefined;
     if (!old || !this._config || !this.hass) return true;
     const p = parts(this.hass, this._config.entity);
-    const alarms = Object.keys(this.hass.states).filter((id) => id.startsWith("alarm_control_panel."));
-    return [...this._ids, ...Object.values(p), ...alarms].some((id) => id && old.states[id] !== this.hass!.states[id]);
+    const axes = this._ids.flatMap((id) => {
+      const q = id === this._config!.entity ? p : parts(this.hass!, id);
+      return [q.x, q.y, q.z];
+    });
+    return [...this._ids, ...Object.values(p), ...axes].some((id) => id && old.states[id] !== this.hass!.states[id]);
   }
 
   protected updated(changed: PropertyValues): void {
@@ -192,12 +196,12 @@ export class TerralContactCard extends LitElement {
     const h = this.hass!;
     const e = h.states[id];
     if (isUnavailable(e)) return t(h, "unavailable");
-    const open = isOpen(e);
     const look = lookOf(h, this._config!, id);
-    const word = t(h, open ? "ct_open" : "ct_closed");
-    if (short) return look === "alert" ? `${word} ${fmtMins(openMinutes(e))}` : word;
-    if (open) return look === "alert" ? `${word} ${fmtMins(openMinutes(e))}` : `${word} · ${t(h, "ct_ago", { t: fmtMins(openMinutes(e)) })}`;
-    return `${word} · ${t(h, "ct_since", { t: fmtTime(h, e!.last_changed) })}`;
+    const word = lookWord(h, look);
+    if (short) return word;
+    if (look === "open") return `${word} · ${t(h, "ct_ago", { t: fmtMins(minutesIn(e)) })}`;
+    if (look === "closed") return `${word} · ${t(h, "ct_since", { t: fmtTime(h, e!.last_changed) })}`;
+    return word;
   }
 
   render() {
@@ -227,13 +231,11 @@ export class TerralContactCard extends LitElement {
     const open = isOpen(e);
     const kind = kindOf(h, c);
     const p = parts(h, c.entity);
-    const bad = c.tamper !== false && tampered(h, p);
-    const style = look === "alert" ? TINT_ALERT : look === "open" ? TINT_OPEN : "";
+    const style = tintOf(look);
     const size = this._size === "s42" ? "s22" : this._size;
-    const icon = html`<span class="icon">${kindIcon(kind, open, size === "s11" ? 20 : 32)}
-      ${look === "alert" || bad ? html`<i class="bd">${exclaim(size === "s11" ? 11 : 14)}</i>` : nothing}</span>`;
+    const icon = html`<span class="icon">${lookIcon(kind, look, size === "s11" ? 20 : 32)}</span>`;
     const name = this._nameOf(c.entity);
-    const stateTxt = bad && !open ? t(h, "ct_tampered") : this._stateText(c.entity, size !== "s22");
+    const stateTxt = this._stateText(c.entity, size !== "s22");
     const text = html`<span class="txt"><span class="name">${name}</span><span class="state">${stateTxt}</span></span>`;
     let body: unknown = html`${icon}${text}`;
     if (size === "s22") {
@@ -259,30 +261,36 @@ export class TerralContactCard extends LitElement {
           <div class="chips">${chips}</div>
         </div>`;
     }
-    return this._wrap(`${look === "closed" || look === "unavailable" ? "off" : "on"} ${look === "unavailable" ? "unavailable" : ""}`, style, body, `${name}: ${stateTxt}`);
+    return this._wrap(`${style ? "on" : "off"} ${look === "unavailable" ? "unavailable" : ""}`, style, body, `${name}: ${stateTxt}`);
   }
 
   private _group() {
     const h = this.hass!;
     const c = this._config!;
     const ids = this._ids.filter((id) => h.states[id]);
-    const looks = Object.fromEntries(ids.map((id) => [id, lookOf(h, c, id)]));
-    const openIds = ids.filter((id) => looks[id] === "open" || looks[id] === "alert");
-    const alert = ids.some((id) => looks[id] === "alert");
-    const closedN = ids.length - openIds.length;
-    const style = alert ? TINT_ALERT : openIds.length ? TINT_OPEN : "";
+    const looks: Record<string, Look> = Object.fromEntries(ids.map((id) => [id, lookOf(h, c, id)]));
+    const openIds = ids.filter((id) => looks[id] === "open");
+    const ventIds = ids.filter((id) => looks[id] === "vent" || looks[id] === "tilt");
+    const closedN = ids.length - openIds.length - ventIds.length;
+    const top: Look = openIds.length ? "open" : ventIds.length ? "vent" : "closed";
+    const style = tintOf(top);
     const title = c.name || t(h, "ct_group_title");
-    const sum = openIds.length
-      ? `${t(h, openIds.length === 1 ? "ct_open_one" : "ct_open_n", { n: openIds.length })}${closedN ? ` · ${t(h, closedN === 1 ? "ct_closed_one" : "ct_closed_n", { n: closedN })}` : ""}`
-      : t(h, "ct_all_closed");
-    const firstKind = kindOf(h, { entity: openIds[0] ?? ids[0] ?? c.entity, kind: openIds.length ? undefined : c.kind });
+    const bits = [
+      openIds.length ? t(h, openIds.length === 1 ? "ct_open_one" : "ct_open_n", { n: openIds.length }) : "",
+      ventIds.length ? t(h, "ct_vent_n", { n: ventIds.length }) : "",
+      closedN && (openIds.length || ventIds.length) ? t(h, closedN === 1 ? "ct_closed_one" : "ct_closed_n", { n: closedN }) : "",
+    ].filter(Boolean);
+    const sum = bits.length ? bits.join(" · ") : t(h, "ct_all_closed");
+    const lead = openIds[0] ?? ventIds[0] ?? ids[0] ?? c.entity;
+    const firstKind = kindOf(h, { entity: lead, kind: lead === c.entity ? c.kind : undefined });
     const size = this._size;
-    const icon = html`<span class="icon">${kindIcon(firstKind, openIds.length > 0, size === "s11" ? 20 : 32)}
-      ${openIds.length ? html`<i class="cnt">${openIds.length}</i>` : nothing}</span>`;
+    const count = openIds.length || ventIds.length;
+    const icon = html`<span class="icon">${lookIcon(firstKind, top, size === "s11" ? 20 : 32)}
+      ${count ? html`<i class="cnt">${count}</i>` : nothing}</span>`;
     const text = html`<span class="txt"><span class="name">${title}</span><span class="state">${sum}</span></span>`;
     if (size === "s11" || size === "s21") return this._wrap(openIds.length ? "on" : "off", style, html`${icon}${text}`, `${title}: ${sum}`);
     const sorted = [...ids].sort((a, b) => {
-      const r = (x: string) => (looks[x] === "alert" ? 0 : looks[x] === "open" ? 1 : 2);
+      const r = (x: string) => (looks[x] === "open" ? 0 : looks[x] === "vent" || looks[x] === "tilt" ? 1 : looks[x] === "unavailable" ? 2 : 3);
       return r(a) - r(b) || this._nameOf(a).localeCompare(this._nameOf(b));
     });
     const max = size === "s42" ? 4 : 2;
@@ -293,9 +301,9 @@ export class TerralContactCard extends LitElement {
         ${shown.map((id) => {
           const lk = looks[id];
           const e = h.states[id];
-          const right = lk === "alert" ? fmtMins(openMinutes(e)) : lk === "open" ? t(h, "ct_open") : lk === "unavailable" ? "—" : "";
+          const right = lk === "open" ? fmtMins(minutesIn(e)) : lk === "vent" || lk === "tilt" ? lookWord(h, lk) : lk === "unavailable" ? "—" : "";
           return html`<button class="row ${lk}" data-id=${id}>
-            <span class="ri">${kindIcon(kindOf(h, { entity: id }), isOpen(e), 18)}</span>
+            <span class="ri">${lookIcon(kindOf(h, { entity: id, kind: id === c.entity ? c.kind : undefined }), lk, 18)}</span>
             <span class="rn">${this._nameOf(id)}<small>${this._stateText(id)}</small></span>
             <b>${right || contactIcon("check", 16)}</b>
           </button>`;
@@ -561,12 +569,14 @@ export class TerralContactCard extends LitElement {
       background: #ff7a2f;
       color: #fff;
     }
-    .row.alert .ri {
-      background: #f04848;
+    .row.vent .ri,
+    .row.tilt .ri {
+      background: #3b82f6;
       color: #fff;
     }
     .row.open,
-    .row.alert {
+    .row.vent,
+    .row.tilt {
       background: color-mix(in srgb, var(--fg) 6%, transparent);
     }
     .rn {
@@ -591,12 +601,6 @@ export class TerralContactCard extends LitElement {
       font-size: 13px;
       white-space: nowrap;
     }
-    .row.alert b {
-      color: #c4282f;
-    }
-    .off .row.alert b {
-      color: #ff8a8a;
-    }
     .more {
       margin: 2px 8px 0;
       font-size: 13px;
@@ -606,8 +610,7 @@ export class TerralContactCard extends LitElement {
   `;
 }
 
-const exclaim = (s: number) =>
-  html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 6v8"></path><circle cx="12" cy="18" r="1.2" fill="currentColor"></circle></svg>`;
+
 
 declare global {
   interface HTMLElementTagNameMap {

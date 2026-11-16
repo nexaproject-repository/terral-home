@@ -7,7 +7,7 @@
 //             weather forecast options; robot vacuum routines on the card;
 //             switch colour, 2/2 view, icon and consumption sensors;
 //             home energy view, main meter and consumers; door / window kind,
-//             alerts, what to show and the group of sensors.
+//             recorded ventilation / tilt positions, what to show and the group.
 // The size is not chosen here: new cards get a default and the corner resizes.
 // In "edit" mode it reports through terral-card-config / terral-card-remove
 // events (see openCardSettings), which the Terral panel stores in the layout.
@@ -41,7 +41,7 @@ import { SWITCH_COLORS, SWITCH_ICONS, guessIcon, switchIcon, switchTint } from "
 import { meterOf } from "../switch/switch-model";
 import { CONSUMER_COLORS, type Consumer, consumerIcon, consumerName, guessTotal, isEnergy, isMeter } from "../energy/energy-model";
 import { ENERGY_ICONS, energyIcon, hexOf } from "../energy/energy-views";
-import { type ContactKind, isContact, kindIcon, kindOf } from "../contact/contact-model";
+import { type ContactKind, type PositionKey, isContact, kindIcon, kindOf, lookIcon, lookWord, positionOf, xyzOf } from "../contact/contact-model";
 
 export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch" | "energy" | "contact";
 export interface CardDraft {
@@ -398,8 +398,8 @@ export class TerralCardConfig extends TerralSheet {
     const c = this.draft.config;
     const kind = kindOf(h, { entity: c.entity, kind: c.kind, name: c.name });
     const ents = devId ? this._entitiesOf(devId, (id) => isContact(h, id)) : [];
-    const mins = c.alert_minutes ?? 30;
     const group: string[] = c.group ?? [];
+    const withAxes = [c.entity, ...group].filter((id) => xyzOf(h, id));
     const tog = (key: string, label: string, sub?: string) => html`<button class="li" role="switch" aria-checked=${c[key] !== false}
       @click=${() => this._set({ [key]: c[key] === false ? undefined : false })}>
       <span class="nm">${label}${sub ? html`<small>${sub}</small>` : nothing}</span><span class="tog ${c[key] !== false ? "on" : ""}"></span></button>`;
@@ -412,16 +412,7 @@ export class TerralCardConfig extends TerralSheet {
             ${kindIcon(k, false, 26)}${t(h, `ct_kind_${k}` as StringKey)}</button>`)}
         </div></div>
       </section>
-      <section>
-        <h3>${t(h, "ct_alerts")}</h3>
-        <div class="list">
-          <div class="li"><span class="nm">${t(h, "ct_alert_after")}<small>${t(h, "ct_alert_after_sub")}</small></span>
-            <span class="seg">${[15, 30, 60, 0].map((m) => html`<button class=${mins === m ? "sel" : ""} @click=${() => this._set({ alert_minutes: m === 30 ? undefined : m })}>${m ? m : t(h, "ct_never")}</button>`)}</span>
-          </div>
-          ${tog("alarm_warn", t(h, "ct_alarm_warn"), t(h, "ct_alarm_warn_sub"))}
-          ${tog("tamper", t(h, "ct_tamper_warn"), t(h, "ct_tamper_warn_sub"))}
-        </div>
-      </section>
+      ${withAxes.map((id) => this._positions(id, withAxes.length > 1))}
       <section>
         <h3>${t(h, "ct_show")}</h3>
         <div class="list">${tog("show_temp", t(h, "ct_show_temp"))}${tog("show_battery", t(h, "ct_show_battery"))}</div>
@@ -441,6 +432,44 @@ export class TerralCardConfig extends TerralSheet {
         </div>
         <p class="note" style="margin-top:8px">${t(h, "ct_group_note")}</p>
       </section>`;
+  }
+
+  /**
+   * Recorded positions of one sensor with X / Y / Z axes: put the window in a
+   * position and record; the card then recognises it (ventilation / tilt even
+   * though the contact reads closed).
+   */
+  private _positions(id: string, named: boolean) {
+    const h = this.hass;
+    const c = this.draft.config;
+    const all = (c.positions ?? {}) as Record<string, Partial<Record<PositionKey, { x: number; y: number; z: number }>>>;
+    const mine = all[id] ?? {};
+    const now = xyzOf(h, id);
+    const kind = kindOf(h, { entity: id, kind: id === c.entity ? c.kind : undefined });
+    const detected = positionOf(h, c as never, id);
+    const save = (k: PositionKey, v?: { x: number; y: number; z: number }) => {
+      const next = { ...mine, [k]: v };
+      if (!v) delete next[k];
+      const positions = { ...all, [id]: next };
+      if (!Object.keys(next).length) delete positions[id];
+      this._set({ positions: Object.keys(positions).length ? positions : undefined });
+    };
+    const fmt = (v: { x: number; y: number; z: number }) => `X ${Math.round(v.x)} · Y ${Math.round(v.y)} · Z ${Math.round(v.z)}`;
+    const row = (k: PositionKey) => html`<div class="li">
+      <span class="ic">${lookIcon(kind, k === "closed" ? "closed" : k, 18)}</span>
+      <span class="nm">${t(h, `ct_pos_${k}` as StringKey)}<small>${mine[k] ? fmt(mine[k]!) : t(h, "ct_pos_none")}</small></span>
+      ${mine[k] ? html`<button class="x" aria-label=${t(h, "ct_remove")} @click=${() => save(k)}>×</button>` : nothing}
+      <button class="rec" ?disabled=${!now} @click=${() => now && save(k, now)}>${t(h, mine[k] ? "ct_rerecord" : "ct_record")}</button>
+    </div>`;
+    return html`<section>
+      <h3>${t(h, "ct_positions")}${named ? ` · ${this._entName(id)}` : ""}</h3>
+      <div class="list">
+        <div class="li now"><span class="nm">${t(h, "ct_pos_now")}<small>${now ? fmt(now) : "—"}</small></span>
+          <span class="val">${detected ? t(h, `ct_pos_${detected}` as StringKey) : lookWord(h, h.states[id]?.state === "on" ? "open" : "closed")}</span></div>
+        ${row("closed")}${row("vent")}${row("tilt")}
+      </div>
+      <p class="note" style="margin-top:8px">${t(h, "ct_positions_note")}</p>
+    </section>`;
   }
 
   // ---- Home energy ----------------------------------------------------------------
@@ -986,6 +1015,19 @@ export class TerralCardConfig extends TerralSheet {
         font-weight: 600;
         color: rgba(255, 255, 255, 0.8);
         border: 2px solid transparent;
+      }
+      .rec {
+        height: 32px;
+        padding: 0 12px;
+        border-radius: 16px;
+        background: #fff;
+        color: #23233a;
+        font-size: 13px;
+        font-weight: 700;
+        flex: none;
+      }
+      .rec:disabled {
+        opacity: 0.4;
       }
       .views.four {
         grid-template-columns: repeat(4, minmax(0, 1fr));

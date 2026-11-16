@@ -1,4 +1,4 @@
-// Door / window window: state, the armed-alarm warning, today (timeline,
+// Door / window window: state (open, ventilation, closed), today (timeline,
 // openings, time open, longest), the openings of the last 7 days and the
 // sensor's own data (temperature, vibration, tamper, battery, Z-Wave status).
 // For a group card it first lists every sensor; tapping one shows its detail.
@@ -11,19 +11,20 @@ import { TerralSheet } from "../shared/terral-sheet";
 import { type Usage, fmtTime, loadUsage } from "../switch/switch-model";
 import {
   type ContactConfig,
-  TINT_ALERT,
-  TINT_OPEN,
-  anyAlarmArmed,
   contactIcon,
   fmtMins,
   isOpen,
   isUnavailable,
   kindIcon,
   kindOf,
+  lookIcon,
   lookOf,
-  openMinutes,
+  lookWord,
+  minutesIn,
   parts,
+  tintOf,
 } from "./contact-model";
+
 
 @customElement("terral-contact-dialog")
 export class TerralContactDialog extends TerralSheet {
@@ -88,15 +89,15 @@ export class TerralContactDialog extends TerralSheet {
   private _list() {
     const h = this.hass;
     const ids = this._ids.filter((id) => h.states[id]);
-    const rank = (id: string) => ({ alert: 0, open: 1, unavailable: 2, closed: 3 })[lookOf(h, this.config, id)];
+    const rank = (id: string) => ({ open: 0, vent: 1, tilt: 1, unavailable: 2, closed: 3 })[lookOf(h, this.config, id)];
     return html`<div class="scroll"><div class="list">
       ${[...ids].sort((a, b) => rank(a) - rank(b) || this._name(a).localeCompare(this._name(b))).map((id) => {
         const e = h.states[id];
         const lk = lookOf(h, this.config, id);
         return html`<button class="sess" @click=${() => (this.sensor = id)}>
-          <span class="dot ${lk}">${kindIcon(kindOf(h, { entity: id }), isOpen(e), 17)}</span>
+          <span class="dot ${lk}">${lookIcon(kindOf(h, { entity: id, kind: id === this.config.entity ? this.config.kind : undefined }), lk, 17)}</span>
           <span class="nm"><span>${this._name(id)}</span><small>${this._stateLine(id)}</small></span>
-          <span class="kwh">${lk === "alert" ? fmtMins(openMinutes(e)) : lk === "open" ? t(h, "ct_open") : lk === "unavailable" ? "—" : contactIcon("check", 16)}</span>
+          <span class="kwh">${lk === "open" ? fmtMins(minutesIn(e)) : lk === "vent" || lk === "tilt" ? lookWord(h, lk) : lk === "unavailable" ? "—" : contactIcon("check", 16)}</span>
         </button>`;
       })}
     </div></div>`;
@@ -106,8 +107,10 @@ export class TerralContactDialog extends TerralSheet {
     const h = this.hass;
     const e = h.states[id];
     if (isUnavailable(e)) return t(h, "unavailable");
+    const lk = lookOf(h, this.config, id);
+    if (lk === "vent" || lk === "tilt") return lookWord(h, lk);
     return isOpen(e)
-      ? `${t(h, "ct_open")} · ${t(h, "ct_ago", { t: fmtMins(openMinutes(e)) })}`
+      ? `${t(h, "ct_open")} · ${t(h, "ct_ago", { t: fmtMins(minutesIn(e)) })}`
       : `${t(h, "ct_closed")} · ${t(h, "ct_since", { t: fmtTime(h, e!.last_changed) })}`;
   }
 
@@ -146,15 +149,12 @@ export class TerralContactDialog extends TerralSheet {
     const tamper = st(p.tamper), vib = st(p.vibration), temp = st(p.temperature), bat = st(p.battery), node = st(p.node);
     const nodeTxt = node ? (node.state === "dead" ? t(h, "ct_node_dead") : t(h, "ct_node_ok")) : "";
     return html`
-      <div class="status ${lk === "open" || lk === "alert" ? "on" : ""}" style=${lk === "alert" ? TINT_ALERT : lk === "open" ? TINT_OPEN : ""}>
-        <span class="icon">${kindIcon(kind, open, 32)}</span>
-        <div class="txt"><strong>${isUnavailable(e) ? t(h, "unavailable") : t(h, open ? "ct_open" : "ct_closed")}</strong>
+      <div class="status ${tintOf(lk) ? "on" : ""}" style=${tintOf(lk)}>
+        <span class="icon">${lookIcon(kind, lk, 32)}</span>
+        <div class="txt"><strong>${lookWord(h, lk)}</strong>
           <span>${isUnavailable(e) ? "" : `${t(h, "ct_since_at", { t: fmtTime(h, e.last_changed) })} · ${fmtMins((Date.now() - new Date(e.last_changed).getTime()) / 60_000)}`}</span></div>
       </div>
       <div class="scroll">
-        ${open && c.alarm_warn !== false
-          ? html`<p class="warn">${contactIcon("bell", 18)}<span>${t(h, anyAlarmArmed(h) ? "ct_alarm_now" : "ct_alarm_hint")}</span></p>`
-          : nothing}
         ${this._error ? html`<div class="list"><p class="empty">${t(h, "history_unavailable")}</p></div>` : nothing}
         <section>
           <h3>${t(h, "today")}</h3>
@@ -366,8 +366,9 @@ export class TerralContactDialog extends TerralSheet {
       .dot.open {
         background: #ff7a2f;
       }
-      .dot.alert {
-        background: #f04848;
+      .dot.vent,
+      .dot.tilt {
+        background: #3b82f6;
       }
       .sess .nm,
       .src .nm {

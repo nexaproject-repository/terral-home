@@ -1,22 +1,30 @@
 // Door / window helpers: open or closed, what it is (door, window, balcony
 // door, garage), the sibling sensors of the same device (tamper, vibration,
-// temperature, battery, Z-Wave node status) and the "open too long" alert.
+// temperature, battery, Z-Wave node status, X / Y / Z axes) and the recorded
+// ventilation / tilt positions.
 import { svg } from "lit";
 import type { HassEntity, HomeAssistant } from "../ha-types";
 import { siblings } from "../charger/charger-model";
+import { t } from "../i18n";
 
 export type ContactKind = "door" | "window" | "balcony" | "garage";
+export type PositionKey = "closed" | "vent" | "tilt";
+export interface XYZ {
+  x: number;
+  y: number;
+  z: number;
+}
 
 export interface ContactConfig {
   entity: string;
   name?: string;
   kind?: ContactKind;
-  /** Minutes open before the card turns red (0 = never). Default 30. */
-  alert_minutes?: number;
-  /** Red while an alarm is armed and this is open. Default on. */
-  alarm_warn?: boolean;
-  /** "!" on the icon when the cover is removed or it is knocked. Default on. */
-  tamper?: boolean;
+  /**
+   * Recorded accelerometer readings per sensor and position, for windows with
+   * a tilt sensor (X / Y / Z axes): "closed", "vent" (ventilation) and "tilt".
+   * The card shows the position whose reading is closest to the current one.
+   */
+  positions?: Record<string, Partial<Record<PositionKey, XYZ>>>;
   show_temp?: boolean;
   show_battery?: boolean;
   /** Other door / window sensors: the card becomes a group card. */
@@ -54,6 +62,9 @@ export interface Parts {
   temperature?: string;
   battery?: string;
   node?: string;
+  x?: string;
+  y?: string;
+  z?: string;
 }
 
 const name = (h: HomeAssistant, id: string) => `${id} ${h.states[id]?.attributes.friendly_name ?? ""}`.toLowerCase();
@@ -70,30 +81,58 @@ export function parts(h: HomeAssistant, id: string): Parts {
       find((x) => x.startsWith("sensor.") && dcOf(h, x) === "battery") ??
       find((x) => x.startsWith("binary_sensor.") && dcOf(h, x) === "battery"),
     node: find((x) => x.startsWith("sensor.") && /_node_status$/.test(x)),
+    x: find((x) => x.startsWith("sensor.") && /(x[ _-]?axis|eje[ _-]?x|_x$)/.test(name(h, x))),
+    y: find((x) => x.startsWith("sensor.") && /(y[ _-]?axis|eje[ _-]?y|_y$)/.test(name(h, x))),
+    z: find((x) => x.startsWith("sensor.") && /(z[ _-]?axis|eje[ _-]?z|_z$)/.test(name(h, x))),
   };
 }
 
-/** Cover removed or being knocked right now. */
-export const tampered = (h: HomeAssistant, p: Parts) =>
-  [p.tamper, p.vibration].some((id) => id && h.states[id]?.state === "on");
+/** Current accelerometer reading of a sensor's device, or undefined. */
+export function xyzOf(h: HomeAssistant, id: string): XYZ | undefined {
+  const p = parts(h, id);
+  if (!p.x || !p.y || !p.z) return undefined;
+  const v = [p.x, p.y, p.z].map((s) => Number(h.states[s!]?.state));
+  if (v.some((n) => !Number.isFinite(n))) return undefined;
+  return { x: v[0], y: v[1], z: v[2] };
+}
 
-export const anyAlarmArmed = (h: HomeAssistant) =>
-  Object.values(h.states).some((e) => e.entity_id.startsWith("alarm_control_panel.") && /^armed_/.test(e.state));
+const dist = (a: XYZ, b: XYZ) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 
-/** Minutes open so far (0 when closed). */
-export const openMinutes = (e?: HassEntity) => (isOpen(e) ? (Date.now() - new Date(e!.last_changed).getTime()) / 60_000 : 0);
+/**
+ * Position from the recorded readings: the closest one wins, as long as it is
+ * clearly closer than the others (or, alone, within a small margin).
+ */
+export function positionOf(h: HomeAssistant, c: ContactConfig, id: string): PositionKey | undefined {
+  const refs = c.positions?.[id];
+  if (!refs || !(refs.vent || refs.tilt)) return undefined;
+  const now = xyzOf(h, id);
+  if (!now) return undefined;
+  const list = (Object.entries(refs) as [PositionKey, XYZ][]).filter(([, v]) => v).map(([k, v]) => ({ k, d: dist(now, v), v }));
+  list.sort((a, b) => a.d - b.d);
+  const best = list[0];
+  const second = list[1];
+  const margin = second ? Math.max(40, dist(best.v, second.v) * 0.5) : 60;
+  return best.d <= margin ? best.k : undefined;
+}
 
-export type Look = "closed" | "open" | "alert" | "unavailable";
+export type Look = "closed" | "open" | "vent" | "tilt" | "unavailable";
 
+/** Open beats everything; a recorded ventilation / tilt position comes next. */
 export function lookOf(h: HomeAssistant, c: ContactConfig, id = c.entity): Look {
   const e = h.states[id];
   if (isUnavailable(e)) return "unavailable";
-  if (!isOpen(e)) return "closed";
-  const limit = c.alert_minutes ?? 30;
-  if (limit > 0 && openMinutes(e) >= limit) return "alert";
-  if (c.alarm_warn !== false && anyAlarmArmed(h)) return "alert";
-  return "open";
+  if (isOpen(e)) return "open";
+  const pos = positionOf(h, c, id);
+  if (pos === "vent" || pos === "tilt") return pos;
+  return "closed";
 }
+
+/** "Abierta", "Ventilación", "Abatida", "Cerrada". */
+export const lookWord = (h: HomeAssistant, look: Look) =>
+  t(h, look === "open" ? "ct_open" : look === "vent" ? "ct_vent" : look === "tilt" ? "ct_tilt" : look === "unavailable" ? "unavailable" : "ct_closed");
+
+/** Minutes in the current state. */
+export const minutesIn = (e?: HassEntity) => (e ? (Date.now() - new Date(e.last_changed).getTime()) / 60_000 : 0);
 
 // ---- Icons --------------------------------------------------------------------------
 
@@ -104,6 +143,8 @@ const PATHS: Record<string, ReturnType<typeof svg>> = {
   windowO: svg`<rect x="4" y="3" width="16" height="18" rx="1.5" opacity=".45"></rect><path d="M12 3v18"></path><path d="M12 3l6.5 2.5v15L12 21" fill="currentColor" fill-opacity=".25"></path>`,
   balconyC: svg`<rect x="5" y="2.5" width="14" height="19" rx="1.5"></rect><path d="M12 2.5v19"></path><path d="M10 12h.01M14 12h.01"></path>`,
   balconyO: svg`<rect x="5" y="2.5" width="14" height="19" rx="1.5" opacity=".45"></rect><path d="M12 2.5v19"></path><path d="M12 2.5l5.5 2.2v14.6L12 21.5" fill="currentColor" fill-opacity=".25"></path>`,
+  windowV: svg`<rect x="4" y="3" width="16" height="18" rx="1.5"></rect><path d="M12 3v18M4 12h16" opacity=".45"></path><path d="M4 3l3 3.2h10L20 3" fill="currentColor" fill-opacity=".3"></path><path d="M12 7.5v3M10.5 9 12 7.5 13.5 9"></path>`,
+  balconyV: svg`<rect x="5" y="2.5" width="14" height="19" rx="1.5"></rect><path d="M12 2.5v19" opacity=".45"></path><path d="M5 2.5l2.4 3h9.2L19 2.5" fill="currentColor" fill-opacity=".3"></path><path d="M12 7v3.5M10.5 8.5 12 7l1.5 1.5"></path>`,
   garageC: svg`<path d="M3 21V9l9-5 9 5v12"></path><path d="M6.5 21v-9h11v9M6.5 15h11M6.5 18h11"></path>`,
   garageO: svg`<path d="M3 21V9l9-5 9 5v12"></path><path d="M6.5 21v-9h11M6.5 15h11" opacity=".45"></path>`,
   thermo: svg`<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"></path>`,
@@ -120,9 +161,14 @@ export function contactIcon(key: string, size = 24) {
 }
 
 export const kindIcon = (kind: ContactKind, open: boolean, size = 24) => contactIcon(`${kind}${open ? "O" : "C"}`, size);
+/** Icon for a look: closed, open, or ventilation / tilt (windows and balcony doors). */
+export const lookIcon = (kind: ContactKind, look: string, size = 24) =>
+  look === "vent" || look === "tilt" ? contactIcon(kind === "window" || kind === "balcony" ? `${kind}V` : `${kind}O`, size) : kindIcon(kind, look === "open", size);
 
 export const TINT_OPEN = "--bg:rgba(255,240,232,.95);--fg:#3d1c10;--fg2:#7a4a38;--accent:#ff7a2f";
-export const TINT_ALERT = "--bg:rgba(255,236,238,.95);--fg:#3d1216;--fg2:#7d3a40;--accent:#f04848";
+/** Ventilation / tilted: a calm blue, it's a normal position. */
+export const TINT_VENT = "--bg:rgba(235,243,255,.95);--fg:#0f2547;--fg2:#44608a;--accent:#3b82f6";
+export const tintOf = (look: Look) => (look === "open" ? TINT_OPEN : look === "vent" || look === "tilt" ? TINT_VENT : "");
 
 export function fmtMins(min: number): string {
   const m = Math.max(0, Math.floor(min));

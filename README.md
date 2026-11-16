@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.17.0). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.17.1). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -144,7 +144,8 @@ How it reads Roborock: battery, progress, area, time, current room and error com
 
 For a door / window contact sensor (`binary_sensor` with `device_class` door, window, garage_door or opening), or a group of them.
 
-- **Closed**: glass. **Open**: orange, with the icon swung open and the time it has been open. **Open too long** (15, 30 or 60 min, chosen in the settings; 30 by default) or **open while an alarm is armed**: red, with a red "!" and the time counting. **Cover removed or knocked** (the device's tamper / vibration sensors): red "!" on the icon even when closed.
+- **Closed**: glass. **Open**: orange, with the icon swung open and the time it has been open.
+- **Ventilation / tilted**: for windows whose sensor has X / Y / Z axes. In the settings, put the window in each position (closed, ventilation, tilted) and tap **Record**; the card then recognises the position from the axes and shows it in blue, even though the contact reads closed (so it doesn't get in the way of the alarm).
 - **What it is**: door, window, balcony door or garage (changes the icon; guessed from the device class and the name).
 - **One sensor**: 1/1, 2/1 and 2/2 (today's open periods on a line, temperature, battery and openings today, from the same device).
 - **Group**: add more sensors in the settings and the card sums them up ("2 open · 5 closed"), the open ones first; every size up to 4/2. A row opens that sensor.
@@ -265,9 +266,10 @@ animate: true
 type: custom:terral-home-contact
 entity: binary_sensor.balcony_door
 kind: balcony                 # door | window | balcony | garage
-alert_minutes: 30             # 15 | 30 | 60 | 0 (never)
-alarm_warn: true              # red while an alarm is armed and it is open
-tamper: true                  # red "!" when the cover is removed or it is knocked
+positions:                    # recorded with "Record" in the settings
+  binary_sensor.balcony_door:
+    closed: { x: 22, y: 967, z: -4 }
+    vent: { x: 175, y: 955, z: -38 }
 show_temp: true
 show_battery: true
 group:                        # optional: a group card with these too
@@ -308,7 +310,7 @@ Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto crista
 
 - **Instalación**: en HACS añade este repositorio como **repositorio personalizado** de tipo **Integración**, instala **Terral Home**, reinicia y añade la integración desde **Ajustes → Dispositivos y servicios**. Aparecerá **Terral Home** en la barra lateral.
 - **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo, robot aspirador, interruptor, consumo de la casa, puertas y ventanas) → dispositivo y nombre → **Añadir**.
-- **Puertas y ventanas**: cerrada en cristal, abierta en naranja con el tiempo, roja si lleva abierta más de lo que elijas (15, 30 o 60 min) o si la alarma está armada, y una **!** roja si quitan la tapa o la golpean. Puede ser un solo sensor o un grupo («2 abiertas · 5 cerradas»). La ventana tiene las aperturas del día y de la semana y los datos del sensor.
+- **Puertas y ventanas**: cerrada en cristal y abierta en naranja con el tiempo. Si el sensor tiene ejes X, Y, Z, en los ajustes pones la ventana en **ventilación** (o abatida), pulsas **Grabar** y la tarjeta la mostrará en azul como «Ventilación» aunque el contacto diga cerrada. Puede ser un solo sensor o un grupo («2 abiertas · 5 cerradas»). La ventana tiene las aperturas del día y de la semana y los datos del sensor.
 - **Consumo de la casa**: el contador general repartido entre los consumidores que elijas (cargador, aire…) y el **resto de la casa**. Tres vistas a elegir en los ajustes: **Flujo** (puntos que van de la red a cada consumidor), **Anillo** y **Barras**, con movimiento más rápido cuanto más gasta cada uno. La ventana tiene el consumo de hoy por horas, por consumidor y de los últimos 7 días.
 - **Interruptor** (termo, matamosquitos, enchufe…): el icono lo enciende y apaga; en los ajustes eliges el **icono** (15), el **color** al encender (8: fuerte en el icono y suave de fondo) y qué muestra la **2/2** (A · Datos, B · Consumo o C · Línea del día). La ventana tiene el día de hoy, el consumo de los últimos 7 días y el **registro** de encendidos y apagados con quién lo hizo. Sin medidor de consumo muestra horas encendido.
 - **Robot aspirador** (Roborock u otros): en espera, la 2/2 muestra tus 3 rutinas principales (se eligen en los ajustes) y el icono abre todas; limpiando, el icono pausa y se ve el progreso; atascado, sale una **!** roja sobre el icono. La batería va en el texto. En la ventana: aspirar / fregar / ambos, potencia, agua, modo de mopa, habitaciones y rutinas; lo que no aplica se apaga.

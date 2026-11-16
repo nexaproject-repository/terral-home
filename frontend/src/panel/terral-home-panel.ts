@@ -109,7 +109,7 @@ const CARD_TAGS: Record<string, string> = {
 };
 
 /** Settings a card may store in the layout through "terral-card-config". */
-const CONFIG_KEYS = ["entity", "device", "name", "invert", "use_light_color", "status_entity", "power_entity", "energy_entity", "max_power", "min_temp", "max_temp", "temp_step", "mode_rules", "show_swing", "forecast_2x2", "animate", "show_details", "forecast_days", "routines", "icon", "color", "style", "sum_only", "consumers", "rest", "view", "animate", "kind", "alert_minutes", "alarm_warn", "tamper", "show_temp", "show_battery", "group"];
+const CONFIG_KEYS = ["entity", "device", "name", "invert", "use_light_color", "status_entity", "power_entity", "energy_entity", "max_power", "min_temp", "max_temp", "temp_step", "mode_rules", "show_swing", "forecast_2x2", "animate", "show_details", "forecast_days", "routines", "icon", "color", "style", "sum_only", "consumers", "rest", "view", "animate", "kind", "positions", "show_temp", "show_battery", "group"];
 
 // The Companion app paints the notch and home-bar areas with ONE solid colour
 // (the theme's primary background). We give it EDGE and fade the panel's

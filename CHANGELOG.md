@@ -2,6 +2,10 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.17.1 — 2026-11-16
+- Doors and windows: **positions** for windows with X / Y / Z axes — record closed, ventilation and tilted in the settings; the card shows "Ventilación" / "Abatida" in blue even though the contact reads closed, and the group counts them apart ("1 en ventilación").
+- Doors and windows: the alerts are gone (no red for open too long or with the alarm armed, no "!" badge); tamper and vibration stay in the window as data.
+
 ## 0.17.0 — 2026-11-16
 - **Doors and windows card** (`terral-home-contact`): closed (glass), open (orange, with the time), open too long or open with the alarm armed (red, "!", time counting), tampered or knocked (red "!" even closed). Door, window, balcony door or garage icons.
 - One sensor (1/1, 2/1, 2/2 with today's open periods, temperature, battery and openings) or a **group** of sensors (up to 4/2, open ones first).
