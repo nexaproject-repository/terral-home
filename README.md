@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.8.2). Not ready for daily use yet.
+> 🚧 Early development (v0.9.0). Not ready for daily use yet.
 
 Terral Home brings a clean, glass-style look to Home Assistant, inspired by modern mobile home apps, plus a smart notification system that knows whether you are home, away or asleep.
 
@@ -36,7 +36,7 @@ Terral Home brings a clean, glass-style look to Home Assistant, inspired by mode
 3. Install **Terral Home** and restart Home Assistant.
 4. **Settings → Devices & services → Add integration → Terral Home**.
 
-## Getting started (v0.8)
+## Getting started (v0.9)
 
 After adding the integration, **Terral Home** appears in the sidebar. It is a full-screen page of its own (no Home Assistant toolbar):
 
@@ -47,11 +47,12 @@ After adding the integration, **Terral Home** appears in the sidebar. It is a fu
 - **Alarm card** (2/2, works with [Alarmo](https://github.com/nielsfaber/alarmo) and any alarm panel): one button per enabled mode (away, home, vacation), a blinking countdown while arming, only **Desarmar** once armed, a code pad when the alarm needs a code, and **Armar igualmente** when Alarmo finds something open. Tap the card for night/custom modes, skipping the delay and open sensors.
 - **EV charger card** (all sizes): the icon locks or unlocks the charger. Pick the switch, lock or `input_boolean` that blocks or enables charging and use **Invertir** if on means locked; the settings explain what each state does. Status, power and session energy are detected from the same device. Colours: green while charging, warm cream with a red lock when the car is plugged in but the charger is locked, sky blue when ready. Tap the card for the last 7 days and recent charges; the gear opens the settings.
 - **Climate card** (all sizes, any climate entity: air conditioning, ducted, heating, heat pump): the icon turns it on and off; 2/2 has mode, − temperature + and fan speed; 4/2 a big draggable dial with mode and fan at the bottom. Temperature and fan dim in modes that don't use them (configurable per mode), the mode button hides when there is only one mode, and min / max temperature and steps are set in the card settings. Swing shows in the window only when enabled there.
+- **Weather card** ("Cielo", all sizes, Met.no or any weather entity): the card is the sky, a gradient that follows the weather and the time of day, with falling rain or snow. 2/2 shows the next hours (or days), 4/2 hours and days; the window has humidity, wind, pressure, clouds, dew point, rain today, 24 hours and up to 7 days.
 - **···** opens the Terral menu: create sections from your Home Assistant areas (settings are coming).
 
 The layout is stored by the integration and shared by everyone in the house.
 
-The cards can also be used in any regular dashboard as `custom:terral-home-light`, `custom:terral-home-alarm`, `custom:terral-home-charger` and `custom:terral-home-climate`.
+The cards can also be used in any regular dashboard as `custom:terral-home-light`, `custom:terral-home-alarm`, `custom:terral-home-charger`, `custom:terral-home-climate` and `custom:terral-home-weather`.
 
 ## Development
 

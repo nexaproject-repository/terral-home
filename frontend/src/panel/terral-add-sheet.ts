@@ -7,6 +7,7 @@ import { t, type StringKey } from "../i18n";
 import { bulbIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
 import type { CardType } from "./terral-card-config";
+import { weatherIcon } from "../weather/weather-look";
 
 const thermoIcon = (s = 20) => svg`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"></path></svg>`;
 const blindIcon = (s = 20) => svg`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16M5 4v12M19 4v12M5 8h14M5 12h14M5 16h14M12 16v4"></path></svg>`;
@@ -17,6 +18,7 @@ const TYPES: { type: CardType; name: StringKey; desc: StringKey; icon: () => unk
   { type: "alarm", name: "type_alarm", desc: "type_alarm_desc", icon: () => shieldIcon(20), color: "rgba(255,255,255,.18)" },
   { type: "charger", name: "ev_charger", desc: "type_charger_desc", icon: () => evChargerIcon(20), color: "#34c77b" },
   { type: "climate", name: "type_climate", desc: "type_climate_desc", icon: () => thermoIcon(), color: "#4696ff" },
+  { type: "weather", name: "type_weather", desc: "type_weather_desc", icon: () => weatherIcon("partlycloudy", 26), color: "linear-gradient(180deg,#3a8ee6,#7cc0f5)" },
 ];
 const SOON: { name: StringKey; icon: () => unknown }[] = [
   { name: "type_cover", icon: () => blindIcon() },
@@ -42,7 +44,9 @@ export class TerralAddSheet extends TerralSheet {
         ? "alarm_missing"
         : type === "climate" && !Object.keys(this.hass.states).some((id) => id.startsWith("climate."))
           ? "climate_missing"
-          : undefined;
+          : type === "weather" && !Object.keys(this.hass.states).some((id) => id.startsWith("weather."))
+            ? "weather_missing"
+            : undefined;
     const soon = SOON.filter((x) => match(x.name));
     return html`
       <label class="search">

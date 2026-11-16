@@ -27,7 +27,7 @@ import { modeIcon as climateIcon } from "../climate/climate-look";
 import { lang } from "../i18n";
 import { stepMinusIcon, stepPlusIcon, thermoIcon } from "../shared/icons";
 
-export type CardType = "light" | "alarm" | "charger" | "climate";
+export type CardType = "light" | "alarm" | "charger" | "climate" | "weather";
 export interface CardDraft {
   type: CardType;
   config: Record<string, any>;
@@ -41,11 +41,11 @@ export interface CardConfigOptions {
   onRemove?: () => void;
 }
 
-const TAGS: Record<CardType, string> = { light: "terral-home-light", alarm: "terral-home-alarm", charger: "terral-home-charger", climate: "terral-home-climate" };
-const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate" };
+const TAGS: Record<CardType, string> = { light: "terral-home-light", alarm: "terral-home-alarm", charger: "terral-home-charger", climate: "terral-home-climate", weather: "terral-home-weather" };
+const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather" };
 const SIZE_LABEL = (w: number, h: number) => (h === 4 ? "4/2" : h === 1 ? "1/1" : w === 2 ? "2/2" : "2/1");
 
-type Sub = "device" | "entity" | "alarm" | "lock" | "status_entity" | "power_entity" | "energy_entity";
+type Sub = "device" | "entity" | "alarm" | "weather" | "lock" | "status_entity" | "power_entity" | "energy_entity";
 type Dev = { id: string; name?: string | null; name_by_user?: string | null; area_id?: string | null; manufacturer?: string | null; model?: string | null };
 
 const CHARGER_DEVICE = /(wallbox|charger|cargador|evse|easee|zappi|ocpp|pulsar|recarga|wall box|ev charg|copper|commander|go-e|keba|alfen|zaptec|myenergi|ohme|v2c|circontrol)/i;
@@ -61,7 +61,7 @@ export class TerralCardConfig extends TerralSheet {
 
   protected get heading() {
     if (this._sub === "entity" && this.draft.type === "climate") return t(this.hass, "climate_entity");
-    if (this._sub) return t(this.hass, ({ device: "ch_device", entity: "light_entity", alarm: "type_alarm", lock: "ch_lock_entity", status_entity: "ch_status", power_entity: "ch_power", energy_entity: "ch_energy" } as const)[this._sub]);
+    if (this._sub) return t(this.hass, ({ device: "ch_device", entity: "light_entity", alarm: "type_alarm", weather: "type_weather", lock: "ch_lock_entity", status_entity: "ch_status", power_entity: "ch_power", energy_entity: "ch_energy" } as const)[this._sub]);
     return this.options.mode === "edit" ? t(this.hass, "settings") : t(this.hass, TYPE_LABEL[this.draft.type]);
   }
 
@@ -171,7 +171,11 @@ export class TerralCardConfig extends TerralSheet {
     const general = html`<section>
       <h3>${t(h, "general")}</h3>
       <div class="list">
-        ${type === "alarm"
+        ${type === "weather"
+          ? this._weathers().length > 1
+            ? this._row(t(h, "type_weather"), c.entity ? this._entName(c.entity) : t(h, "choose"), "weather")
+            : nothing
+          : type === "alarm"
           ? this._alarms().length > 1
             ? this._row(t(h, "type_alarm"), c.entity ? this._entName(c.entity) : t(h, "choose"), "alarm")
             : nothing
@@ -195,6 +199,28 @@ export class TerralCardConfig extends TerralSheet {
           </button>
         </div>
       </section>`;
+    } else if (type === "weather" && c.entity) {
+      const seg = (cur: unknown, opts: [unknown, string][], set: (v: unknown) => void) =>
+        html`<span class="seg">${opts.map(([v, label]) => html`<button class=${cur === v ? "sel" : ""} @click=${() => set(v)}>${label}</button>`)}</span>`;
+      specific = html`
+        <section>
+          <h3>${t(h, "card_section")}</h3>
+          <div class="list">
+            <div class="li"><span class="nm">${t(h, "forecast_22")}</span>${seg(c.forecast_2x2 ?? "hourly", [["hourly", t(h, "hours_word")], ["daily", t(h, "days_word")]], (v) => this._set({ forecast_2x2: v === "hourly" ? undefined : v }))}</div>
+            <button class="li" role="switch" aria-checked=${c.animate !== false} @click=${() => this._set({ animate: c.animate === false ? undefined : false })}>
+              <span class="nm">${t(h, "animate_fx")}</span><span class="tog ${c.animate !== false ? "on" : ""}"></span>
+            </button>
+          </div>
+        </section>
+        <section>
+          <h3>${t(h, "window_section")}</h3>
+          <div class="list">
+            <button class="li" role="switch" aria-checked=${c.show_details !== false} @click=${() => this._set({ show_details: c.show_details === false ? undefined : false })}>
+              <span class="nm">${t(h, "show_details")}<small>${t(h, "show_details_sub")}</small></span><span class="tog ${c.show_details !== false ? "on" : ""}"></span>
+            </button>
+            <div class="li"><span class="nm">${t(h, "forecast_days")}</span>${seg(c.forecast_days ?? 7, [[5, "5"], [7, "7"]], (v) => this._set({ forecast_days: v === 7 ? undefined : v }))}</div>
+          </div>
+        </section>`;
     } else if (type === "climate" && c.entity && h.states[c.entity]) {
       specific = this._climateSettings(devId);
     } else if (type === "charger" && c.entity) {
@@ -417,6 +443,11 @@ export class TerralCardConfig extends TerralSheet {
     const { config: c } = this.draft;
     const sub = this._sub!;
     if (sub === "device") return html`<div class="scroll">${this._devicePage()}</div>`;
+    if (sub === "weather") {
+      const list = this._weathers();
+      return html`<div class="scroll">${this._group(t(h, "type_weather"), list.map((id) =>
+        this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id }))))}</div>`;
+    }
     if (sub === "alarm") {
       const list = Object.keys(h.states).filter((id) => id.startsWith("alarm_control_panel.") && this._visible(id));
       return html`<div class="scroll">${this._group(t(h, "type_alarm"), list.map((id) =>
@@ -463,7 +494,15 @@ export class TerralCardConfig extends TerralSheet {
       .sort((a, b) => Number(plat(b) === "alarmo") - Number(plat(a) === "alarmo"));
   }
 
+  private _weathers(): string[] {
+    return Object.keys(this.hass.states).filter((id) => id.startsWith("weather.") && this._visible(id)).sort();
+  }
+
   protected willUpdate(): void {
+    if (this.draft.type === "weather" && !this.draft.config.entity && this.hass) {
+      const first = this._weathers()[0];
+      if (first) this.draft = { ...this.draft, config: { ...this.draft.config, entity: first } };
+    }
     if (this.draft.type === "alarm" && !this.draft.config.entity && this.hass) {
       const first = this._alarms()[0];
       if (first) this.draft = { ...this.draft, config: { ...this.draft.config, entity: first } };
