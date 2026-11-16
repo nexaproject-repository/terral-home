@@ -17,8 +17,6 @@ export interface SwitchConfig {
   style?: SwitchStyle;
   power_entity?: string;
   energy_entity?: string;
-  /** Price of a kWh, to estimate the cost. */
-  price?: number;
 }
 
 export const SWITCH_DOMAINS = ["switch", "input_boolean", "light", "fan"];
@@ -272,15 +270,6 @@ export function fmtSpan(ms: number): string {
   const mm = m % 60;
   if (!hh) return `${mm} min`;
   return mm ? `${hh} h ${mm} min` : `${hh} h`;
-}
-
-export function fmtMoney(h: HomeAssistant | undefined, v: number): string {
-  const cur = (h as { config?: { currency?: string } } | undefined)?.config?.currency || "EUR";
-  try {
-    return v.toLocaleString(h?.locale?.language ?? h?.language ?? undefined, { style: "currency", currency: cur, minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  } catch {
-    return `${v.toFixed(2)} €`;
-  }
 }
 
 export const fmtTime = (h: HomeAssistant | undefined, t: number | string) =>

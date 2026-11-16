@@ -2,6 +2,9 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.15.1 — 2026-11-16
+- Switch card: the price of a kWh and the cost are gone from its settings and window.
+
 ## 0.15.0 — 2026-11-16
 - **Switch card** (`terral-home-switch`) for a water heater, bug zapper, plug…: sizes 1/1, 2/1 and 2/2; the icon switches it, the rest opens the window.
 - Chosen in its settings: one of 15 **icons** (guessed from the name otherwise), one of 8 **colours** (strong on the icon, soft on the background), the **2/2 view** (A · Data, B · Consumption, C · Timeline of the day), the power / energy sensors (automatic from the same device) and the price of a kWh.

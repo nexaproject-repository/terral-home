@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.15.0). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.15.1). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -151,8 +151,8 @@ For anything on a switch: a water heater, a bug zapper, a plug, a fan… (`switc
   - **A · Data**: since when · power now · today (kWh, or time on without a meter).
   - **B · Consumption**: the power (or today's kWh / time on) in big, with today's consumption per hour as bars.
   - **C · Timeline of the day** (default): today's on periods from 0 to 24 h, with a mark for now.
-- **Window**: the state (the icon switches it; there's no extra button), **today** (timeline, time on, consumption and cost), the **last 7 days** (kWh per day, or hours on without a meter) and the **log**: every on and off with its time, how long it was on, what it used, and who did it (an automation or script by name, you, or someone from Home Assistant; read from the logbook).
-- **Settings**: device and name, colour (with a preview of the card on and off), 2/2 view, icon, power and energy sensors (automatic: the ones on the same device) and the price of a kWh to estimate the cost.
+- **Window**: the state (the icon switches it; there's no extra button), **today** (timeline, time on and consumption), the **last 7 days** (kWh per day, or hours on without a meter) and the **log**: every on and off with its time, how long it was on, what it used, and who did it (an automation or script by name, you, or someone from Home Assistant; read from the logbook).
+- **Settings**: device and name, colour (with a preview of the card on and off), 2/2 view, icon, power and energy sensors (automatic: the ones on the same device).
 
 ## Using the cards in other dashboards
 
@@ -218,7 +218,6 @@ color: orange               # amber | orange | red | pink | violet | blue | teal
 style: c                    # 2/2 view: a (data) | b (consumption) | c (timeline of the day)
 power_entity: sensor.water_heater_power    # optional: found on the same device when missing
 energy_entity: sensor.water_heater_energy  # optional
-price: 0.15                 # optional: price of a kWh, for the cost
 ```
 
 ## Privacy

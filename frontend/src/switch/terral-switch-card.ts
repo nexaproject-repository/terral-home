@@ -85,7 +85,6 @@ export class TerralSwitchCard extends LitElement {
         { name: "entity", required: true, selector: { entity: { domain: ["switch", "input_boolean", "light", "fan"] } } },
         { name: "name", selector: { text: {} } },
         { name: "style", selector: { select: { mode: "dropdown", options: ["a", "b", "c"] } } },
-        { name: "price", selector: { number: { min: 0, max: 5, step: 0.001, mode: "box" } } },
       ],
     };
   }

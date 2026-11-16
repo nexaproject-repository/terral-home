@@ -1,5 +1,5 @@
 // Switch window: state (the icon switches it, no extra button), today (timeline
-// from 0 to 24 h, time on, consumption, cost), the last 7 days (kWh, or hours
+// from 0 to 24 h, time on, consumption), the last 7 days (kWh, or hours
 // on without a meter) and the log of every on / off with who did it. Every
 // colour follows the card's. The gear opens the card settings.
 import { css, html, nothing } from "lit";
@@ -15,7 +15,6 @@ import {
   type Usage,
   fmtKw,
   fmtKwh,
-  fmtMoney,
   fmtSpan,
   fmtTime,
   isOn,
@@ -135,7 +134,6 @@ export class TerralSwitchDialog extends TerralSheet {
     const nowPct = ((Date.now() - t0) / day) * 100;
     const todaySpans = (u?.spans ?? []).filter((s) => s.end > t0);
     const timesToday = todaySpans.filter((s) => s.start >= t0).length + (todaySpans.some((s) => s.start < t0) ? 1 : 0);
-    const cost = u?.kwhToday != null && c.price ? u.kwhToday * c.price : null;
 
     const days = u?.days ?? [];
     const vals = days.map((d) => (metered ? d.kwh ?? 0 : d.onMs / 3_600_000));
@@ -167,11 +165,10 @@ export class TerralSwitchDialog extends TerralSheet {
                 <b style="left:${nowPct}%"></b>
               </div>
               <div class="ticks"><span>0 h</span><span>6</span><span>12</span><span>18</span><span>24 h</span></div>
-              <div class="stats" style="grid-template-columns:repeat(${metered ? (c.price ? 3 : 2) : 2},minmax(0,1fr))">
+              <div class="stats" style="grid-template-columns:repeat(2,minmax(0,1fr))">
                 <div>${t(h, "sw_on_time")}<b>${u ? fmtSpan(u.onToday) : "…"}</b></div>
                 ${metered
-                  ? html`<div>${t(h, "sw_consumption")}<b>${u?.kwhToday != null ? fmtKwh(h, u.kwhToday) : "…"}</b></div>
-                      ${c.price ? html`<div>${t(h, "sw_cost")}<b>${cost != null ? fmtMoney(h, cost) : "…"}</b></div>` : nothing}`
+                  ? html`<div>${t(h, "sw_consumption")}<b>${u?.kwhToday != null ? fmtKwh(h, u.kwhToday) : "…"}</b></div>`
                   : html`<div>${t(h, "sw_times")}<b>${u ? timesToday : "…"}</b></div>`}
               </div>
             </div>
@@ -191,7 +188,7 @@ export class TerralSwitchDialog extends TerralSheet {
             </div>
             <div class="sum">
               <span>${t(h, "week_total")} <b>${u ? (metered ? fmtKwh(h, weekKwh) : fmtSpan(weekOn)) : "…"}</b></span>
-              <span>${metered ? (c.price && u ? `≈ ${fmtMoney(h, weekKwh * c.price)}` : "") : t(h, "sw_no_meter")}</span>
+              ${metered ? nothing : html`<span>${t(h, "sw_no_meter")}</span>`}
             </div>
           </div>
         </section>

@@ -367,7 +367,7 @@ export class TerralCardConfig extends TerralSheet {
       ${scripts.length ? html`<section><h3>${t(h, "vac_scripts")}</h3><div class="list">${scripts.map(row)}</div></section>` : nothing}`;
   }
 
-  /** Switch: colour (with a preview), 2/2 view, icon, consumption sensors and price. */
+  /** Switch: colour (with a preview), 2/2 view, icon and consumption sensors. */
   private _switchSettings(devId?: string) {
     const h = this.hass;
     const c = this.draft.config;
@@ -423,15 +423,6 @@ export class TerralCardConfig extends TerralSheet {
         <div class="list">
           ${this._row(t(h, "sw_power"), dataVal("power_entity", auto.power), "power_entity")}
           ${this._row(t(h, "sw_energy"), dataVal("energy_entity", auto.energy), "energy_entity")}
-          <label class="li">
-            <span class="nm">${t(h, "sw_price")}<small>${t(h, "sw_price_sub")}</small></span>
-            <input class="num" type="number" inputmode="decimal" min="0" max="5" step="0.001" placeholder="0,15"
-              .value=${c.price != null ? String(c.price) : ""}
-              @change=${(ev: Event) => {
-                const n = parseFloat((ev.target as HTMLInputElement).value.replace(",", "."));
-                this._set({ price: Number.isFinite(n) && n > 0 ? n : undefined });
-              }} />
-          </label>
         </div>
         <p class="note" style="margin-top:8px">${t(h, "sw_meter_note")}</p>
       </section>`;
