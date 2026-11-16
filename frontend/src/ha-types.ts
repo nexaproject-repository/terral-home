@@ -37,6 +37,7 @@ export interface HomeAssistant {
   language?: string;
   config?: { version?: string };
   locale?: { language: string };
+  user?: { is_admin?: boolean; name?: string };
   callService(
     domain: string,
     service: string,

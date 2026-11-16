@@ -22,6 +22,7 @@ import { areaOf, isGroup } from "../light/light-model";
 import { bulbIcon, dotsIcon, gearIcon, linesIcon, menuIcon, minusIcon, plusIcon, thermoIcon } from "../shared/icons";
 import { DEFAULT_QUICK, quickOf, quickState, runQuick } from "./quick-actions";
 import { openSectionSheet } from "./terral-section-sheet";
+import { type DashboardInfo, navigate, openDashboardSheet } from "./terral-dashboard-sheet";
 import { backgroundCss } from "../shared/backgrounds";
 import { openAddSheet } from "./terral-add-sheet";
 import { newDraft, openCardConfig, updateCardConfig } from "./terral-card-config";
@@ -116,7 +117,7 @@ export class TerralHomePanel extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ type: Boolean }) narrow = false;
   @property({ attribute: false }) route?: unknown;
-  @property({ attribute: false }) panel?: { config?: { version?: string } };
+  @property({ attribute: false }) panel?: { config?: { version?: string; dashboard?: string; title?: string | null } };
 
   @state() private _layout?: TerralLayout;
   @state() private _error?: string;
@@ -136,6 +137,11 @@ export class TerralHomePanel extends LitElement {
   @state() private _pad = 16;
   /** Where the dragged section would land: before / after a section, or at the end of an empty lane. */
   @state() private _dropMark?: { sid?: string; after?: boolean; lane?: number };
+
+  /** Rows of the favourites strip being drawn (0 = no strip: phone, or switched off). */
+  private _strip = 0;
+  private _dashLoaded?: string;
+  @state() private _titleOverride?: string;
 
   private _colW = 160;
   private _gap = 10;
@@ -179,10 +185,25 @@ export class TerralHomePanel extends LitElement {
   }
 
   protected updated(changed: PropertyValues): void {
-    if (changed.has("hass") && this.hass) {
+    // Home Assistant may reuse this element for another Terral dashboard: start over.
+    if (changed.has("panel") && this._dashLoaded && this._dashLoaded !== this._dash) {
+      this._unsub?.then((u) => u()).catch(() => undefined);
+      this._unsub = undefined;
+      this._layout = undefined;
+      this._loading = false;
+      this._edit = false;
+      this._els.clear();
+    }
+    if ((changed.has("hass") || changed.has("panel")) && this.hass) {
       if (!this._layout && !this._loading) this._load();
       for (const el of this._els.values()) el.hass = this.hass;
       updateCardConfig(this.hass);
+    }
+    const strip = this.renderRoot.querySelector<HTMLElement>(".grid.strip");
+    strip?.classList.toggle("more", strip.scrollWidth - strip.scrollLeft - strip.clientWidth > 4);
+    if (strip && !strip.dataset.watch) {
+      strip.dataset.watch = "1";
+      strip.addEventListener("scroll", () => strip.classList.toggle("more", strip.scrollWidth - strip.scrollLeft - strip.clientWidth > 4), { passive: true });
     }
     if (changed.has("_renaming") && this._renaming) {
       const input = this.renderRoot.querySelector<HTMLInputElement>("input.rename");
@@ -250,22 +271,39 @@ export class TerralHomePanel extends LitElement {
 
   private _onKey = (ev: KeyboardEvent) => {
     if (ev.key !== "Escape" || this._renaming) return;
-    if (this._edit && !document.querySelector("terral-add-sheet, terral-menu-sheet, terral-confirm-sheet, terral-card-config")) this._edit = false;
+    if (this._edit && !document.querySelector("terral-add-sheet, terral-menu-sheet, terral-confirm-sheet, terral-card-config, terral-section-sheet, terral-dashboard-sheet")) this._edit = false;
   };
 
   // ---- Data ---------------------------------------------------------------
 
+  /** Big title: the dashboard's name, or "Mi casa" for the first dashboard until it is renamed. */
+  private get _title(): string {
+    return this._titleOverride ?? this.panel?.config?.title ?? t(this.hass, "home_title");
+  }
+
+  /** Favourites strip settings of this dashboard (on, 2 rows by default). */
+  private get _favorites(): { enabled: boolean; rows: 1 | 2 } {
+    const f = (this._layout?.favorites ?? {}) as { enabled?: boolean; rows?: number };
+    return { enabled: f.enabled !== false, rows: f.rows === 1 ? 1 : 2 };
+  }
+
+  /** Which dashboard this panel shows ("home" is the first one). */
+  private get _dash(): string {
+    return this.panel?.config?.dashboard ?? "home";
+  }
+
   private async _load() {
     if (!this.hass) return;
     this._loading = true;
+    this._dashLoaded = this._dash;
     try {
-      this._layout = await this.hass.callWS<TerralLayout>({ type: "terral_home/layout/get" });
+      this._layout = await this.hass.callWS<TerralLayout>({ type: "terral_home/layout/get", dashboard: this._dash });
       this._error = undefined;
       this._unsub = this.hass.connection.subscribeMessage<TerralLayout>(
         (layout) => {
           if (!this._pending && !this._drag && !this._resize) this._layout = layout;
         },
-        { type: "terral_home/layout/subscribe" },
+        { type: "terral_home/layout/subscribe", dashboard: this._dash },
       );
     } catch (err) {
       this._error = (err as { message?: string })?.message ?? String(err);
@@ -278,7 +316,7 @@ export class TerralHomePanel extends LitElement {
     this._layout = layout;
     this._pending++;
     try {
-      await this.hass.callWS({ type: "terral_home/layout/save", layout });
+      await this.hass.callWS({ type: "terral_home/layout/save", dashboard: this._dash, layout });
       this._error = undefined;
     } catch (err) {
       this._error = (err as { message?: string })?.message ?? String(err);
@@ -383,25 +421,36 @@ export class TerralHomePanel extends LitElement {
     return lanes.map((l) => l.items);
   }
 
-  private _sizeOf(c: TerralCard): CellSize {
+  private _sizeOf(c: TerralCard, inStrip = false): CellSize {
     const h = c.h === 1 || c.h === 4 ? c.h : 2;
     const w = h === 4 ? 2 : c.w === 2 ? 2 : 1;
+    if (inStrip && this._strip) {
+      // Favourites strip: 1 row only fits 1/1 cards; 2 rows fit 1/1, 2/1 and 2/2.
+      return this._strip === 1 ? { w: 1, h: 1 } : { w: Math.min(w, 2), h: Math.min(h, 2) };
+    }
     return { w: Math.min(w, this._cols), h };
   }
 
-  /** The corner grip only shows when the card has more than one size to offer. */
-  private _canResize(c: TerralCard): boolean {
-    const sizes = this._els.get(c.id)?.getTerralSizes?.() ?? ALL_SIZES;
-    return sizes.filter((s) => s.w <= this._cols).length > 1;
+  /** Cards without a section are in the favourites strip right now. */
+  private _inStrip(key: ListKey) {
+    return key === TOP && this._strip > 0;
   }
 
-  private _element(c: TerralCard): CardEl {
+  /** The corner grip only shows when the card has more than one size to offer. */
+  private _canResize(c: TerralCard, inStrip = false): boolean {
+    if (inStrip && this._strip === 1) return false;
+    const sizes = this._els.get(c.id)?.getTerralSizes?.() ?? ALL_SIZES;
+    return sizes.filter((s) => s.w <= this._cols && (!inStrip || s.h <= this._strip)).length > 1;
+  }
+
+  private _element(c: TerralCard, size?: CellSize): CardEl {
     let el = this._els.get(c.id);
     if (!el) {
       el = document.createElement(CARD_TAGS[c.type] ?? "terral-home-light") as unknown as CardEl;
       this._els.set(c.id, el);
     }
-    const { id: _id, type: _type, w, h, ...rest } = c;
+    const { id: _id, type: _type, w: cw, h: ch, ...rest } = c;
+    const { w, h } = size ?? { w: cw, h: ch };
     const config = { ...rest, type: `custom:${CARD_TAGS[c.type] ?? "terral-home-light"}`, view_layout: { terral: { w, h } } };
     const key = JSON.stringify(config);
     if (el.dataset.cfg !== key) {
@@ -434,11 +483,68 @@ export class TerralHomePanel extends LitElement {
 
   private _menu = () => {
     if (!this.hass) return;
+    const admin = this.hass.user?.is_admin !== false;
     openMenuSheet(this.hass, this.panel?.config?.version ?? VERSION, {
       onEdit: () => (this._edit = true),
       onRooms: () => this._confirmRooms(),
+      onDashboard: () => this._dashboardSettings(),
+      onNewDashboard: admin ? () => this._newDashboard() : undefined,
     });
   };
+
+  // ---- Dashboards -----------------------------------------------------------
+
+  private async _dashboardSettings() {
+    const h = this.hass;
+    if (!h) return;
+    const list = await h.callWS<DashboardInfo[]>({ type: "terral_home/dashboards/list" }).catch(() => [] as DashboardInfo[]);
+    const info: DashboardInfo = list.find((d) => d.id === this._dash) ?? { id: this._dash };
+    openDashboardSheet(h, {
+      mode: "edit",
+      info,
+      favorites: this._favorites,
+      admin: h.user?.is_admin !== false,
+      onSave: async ({ title, icon, require_admin, favorites }) => {
+        const f = this._favorites;
+        if (favorites.enabled !== f.enabled || favorites.rows !== f.rows) {
+          this._update((l) => {
+            const next: Record<string, unknown> = {};
+            if (!favorites.enabled) next.enabled = false;
+            if (favorites.rows === 1) next.rows = 1;
+            if (Object.keys(next).length) l.favorites = next;
+            else delete l.favorites;
+          });
+        }
+        if ((title ?? "") !== (info.title ?? "") || (icon ?? "") !== (info.icon ?? "") || !!require_admin !== !!info.require_admin) {
+          await h.callWS({ type: "terral_home/dashboards/update", dashboard: this._dash, title: title || null, icon: icon || null, require_admin: !!require_admin });
+          this._titleOverride = title || undefined;
+        }
+      },
+      onDelete:
+        this._dash === "home"
+          ? undefined
+          : async () => {
+              await h.callWS({ type: "terral_home/dashboards/delete", dashboard: this._dash });
+              navigate("/terral-home");
+            },
+    });
+  }
+
+  private _newDashboard() {
+    const h = this.hass;
+    if (!h) return;
+    openDashboardSheet(h, {
+      mode: "create",
+      info: { id: "" },
+      favorites: { enabled: true, rows: 2 },
+      admin: true,
+      onSave: async ({ title, icon }) => {
+        const d = await h.callWS<DashboardInfo>({ type: "terral_home/dashboards/create", title, icon });
+        // The new panel is in the sidebar now; open it.
+        window.setTimeout(() => navigate(`/terral-home-${d.id}`), 300);
+      },
+    });
+  }
 
   private _remove(id: string) {
     this._els.delete(id);
@@ -536,9 +642,10 @@ export class TerralHomePanel extends LitElement {
     ev.stopPropagation();
     const handle = ev.currentTarget as HTMLElement;
     const r = (handle.closest(".cell") as HTMLElement).getBoundingClientRect();
-    const sizes = (this._els.get(c.id)?.getTerralSizes?.() ?? ALL_SIZES).filter((s) => s.w <= this._cols);
+    const inStrip = this._findCard(c.id)?.key === TOP && this._strip > 0;
+    const sizes = (this._els.get(c.id)?.getTerralSizes?.() ?? ALL_SIZES).filter((s) => s.w <= this._cols && (!inStrip || s.h <= this._strip));
     this._resizeOrigin = { left: r.left, top: r.top, sizes };
-    const cur = this._sizeOf(c);
+    const cur = this._sizeOf(c, inStrip);
     this._resize = { id: c.id, w: cur.w, h: cur.h };
     handle.setPointerCapture(ev.pointerId);
   }
@@ -568,7 +675,7 @@ export class TerralHomePanel extends LitElement {
     if (!r) return;
     const found = this._findCard(r.id);
     if (!found) return;
-    const cur = this._sizeOf(found.card);
+    const cur = this._sizeOf(found.card, this._inStrip(found.key));
     if (cur.w === r.w && cur.h === r.h) return;
     this._update((l) => {
       const c = TerralHomePanel._list(l, found.key)?.find((x) => x.id === r.id);
@@ -809,10 +916,15 @@ export class TerralHomePanel extends LitElement {
     const draggingCard = this._drag?.kind === "card";
     const draggingSection = this._drag?.kind === "section";
     const showTop = top.length > 0 || empty || (edit && (draggingCard || !sections.length));
+    // Favourites strip: on tablets and computers the cards without a section run
+    // across every column, 1 row (1/1 cards) or 2 rows (1/1, 2/1, 2/2) high.
+    const fav = this._favorites;
+    const strip = fav.enabled && this._lanes > 1 && !empty && (top.length > 0 || (edit && sections.length > 0));
+    this._strip = strip ? fav.rows : 0;
     // Blocks: the cards without a section first, then each section; spread over the lanes.
     type Block = { kind: "top" } | { kind: "sec"; s: TerralSection };
     const blocks: { item: Block; rows: number; titled: boolean }[] = [];
-    if (showTop) blocks.push({ item: { kind: "top" }, rows: Math.max(this._rowsOf(top), empty || (edit && !sections.length) ? 2 : 1), titled: false });
+    if (showTop && !strip) blocks.push({ item: { kind: "top" }, rows: Math.max(this._rowsOf(top), empty || (edit && !sections.length) ? 2 : 1), titled: false });
     for (const s of sections) if (edit || s.cards.length) blocks.push({ item: { kind: "sec", s }, rows: this._rowsOf(s.cards), titled: true });
     const lanes = this._assignLanes(blocks);
     const mark = this._dropMark;
@@ -836,8 +948,11 @@ export class TerralHomePanel extends LitElement {
                   <button class="pbtn" aria-label=${t(this.hass, "more_options")} @click=${this._menu}>${dotsIcon(22)}</button>
                 </div>`}
           </div>
-          <h1>${t(this.hass, "home_title")}</h1>
+          <h1>${this._title}</h1>
           ${this._error ? html`<p class="notice">${t(this.hass, "panel_error")} (${this._error})</p>` : nothing}
+          ${strip
+            ? html`<div class="favs">${this._grid(TOP, top, edit, false, top.length === 0 && edit ? t(this.hass, "fav_drop") : undefined)}</div>`
+            : nothing}
           <div class="lanes" style="--lane-gap:${LANE_GAP}px">
             ${lanes.map(
               (items, li) => html`<div class="lane" style="width:${this._laneW}px">
@@ -941,13 +1056,18 @@ export class TerralHomePanel extends LitElement {
 
   private _grid(key: ListKey, cards: TerralCard[], edit: boolean, addTile: boolean, placeholder?: string) {
     const zoneTarget = this._drag?.kind === "card" && this._dropCard?.key === key && !this._dropCard.targetId;
+    const strip = this._inStrip(key);
+    // The strip flows sideways (swipe for more); every other grid is 2 columns wide.
+    const style = strip
+      ? `grid-auto-flow:column dense;grid-template-rows:repeat(${this._strip},${this._rowH}px);grid-auto-columns:${this._colW}px;gap:${this._gap}px`
+      : `grid-template-columns:repeat(${this._cols},minmax(0,1fr));grid-auto-rows:${this._rowH}px;gap:${this._gap}px`;
     return html`<div
-      class="grid ${zoneTarget ? "zone-target" : ""} ${key === TOP ? "top-grid" : ""}"
+      class="grid ${zoneTarget ? "zone-target" : ""} ${key === TOP ? "top-grid" : ""} ${strip ? "strip" : ""}"
       data-zone=${key}
-      style="grid-template-columns:repeat(${this._cols},minmax(0,1fr));grid-auto-rows:${this._rowH}px;gap:${this._gap}px"
+      style=${style}
     >
       ${repeat(cards, (c) => c.id, (c, i) => this._cell(key, c, i, edit))}
-      ${placeholder && !cards.length ? html`<div class="placeholder" style="grid-column:1/-1">${placeholder}</div>` : nothing}
+      ${placeholder && !cards.length ? html`<div class="placeholder" style=${strip ? `grid-row:1/-1;width:${this._laneW}px` : "grid-column:1/-1"}>${placeholder}</div>` : nothing}
       ${addTile
         ? html`<button class="add" style="grid-row:span 2" @click=${this._add}>
             <span class="addic">${plusIcon(26)}</span><span>${t(this.hass, "add_accessory")}</span>
@@ -957,18 +1077,19 @@ export class TerralHomePanel extends LitElement {
   }
 
   private _cell(key: ListKey, c: TerralCard, i: number, edit: boolean) {
-    const { w, h } = this._sizeOf(c);
+    const size = this._sizeOf(c, this._inStrip(key));
+    const { w, h } = size;
     const dragging = this._drag?.kind === "card" && this._drag.id === c.id;
     const target = this._drag?.kind === "card" && this._dropCard?.targetId === c.id;
     const style = `grid-column:span ${w};grid-row:span ${h};--d:${(i % 5) * -0.07}s;${
       dragging ? `translate:${this._dragDx}px ${this._dragDy}px;z-index:5` : ""
     }`;
     return html`<div class="cell ${dragging ? "dragging" : ""} ${target ? "target" : ""}" data-cid=${c.id} data-key=${key} style=${style}>
-      ${this._element(c)}
+      ${this._element(c, size)}
       ${edit
         ? html`<div class="overlay" @pointerdown=${(ev: PointerEvent) => this._overlayDown(ev, c.id)}>
             <button class="del" aria-label=${t(this.hass, "delete")} @click=${() => this._remove(c.id)}>${minusIcon()}</button>
-            ${this._canResize(c) ? html`<button
+            ${this._canResize(c, this._inStrip(key)) ? html`<button
               class="corner"
               aria-label=${t(this.hass, "resize")}
               @pointerdown=${(ev: PointerEvent) => this._resizeDown(ev, c)}
@@ -1103,6 +1224,26 @@ export class TerralHomePanel extends LitElement {
     .grid {
       display: grid;
       grid-auto-flow: row dense;
+    }
+    /* Favourites strip: across every column, scrolls sideways when it doesn't fit. */
+    .favs {
+      margin: 0 0 22px;
+    }
+    .grid.strip {
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      overscroll-behavior-x: contain;
+      /* Room for the move-mode badges, which stick out of the cards. */
+      padding: 12px 12px;
+      margin: -12px -12px;
+    }
+    .grid.strip::-webkit-scrollbar {
+      display: none;
+    }
+    .grid.strip.more {
+      -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent);
+      mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent);
     }
     /* Blocks (cards without a section, sections) side by side, each in the shortest lane. */
     .lanes {

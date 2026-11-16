@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.12.0). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.13.0). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -26,10 +26,12 @@ Terral Home gives Home Assistant a clean, glass-style home screen inspired by mo
 
 ## What you get today
 
+- **Several dashboards**, each its own entry in Home Assistant's sidebar (name and icon of your choice), so each device can open its own one.
 - **Terral Home page** in the sidebar: full screen, no Home Assistant toolbar, with the "crepúsculo" background and the phone's status and home bars blended in.
 - **Same card size on every screen**: columns are about as wide as on a phone, every section is 2 columns wide, and tablets and computers place more sections side by side (each in the shortest column) instead of stretching the cards. Card sizes (height/width): **1/1, 2/1, 2/2 and 4/2**.
 - **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum), then choose the device and name.
 - **Arrange by touch**: long-press a card to move it, drag the bottom-right corner to resize, remove with **−**.
+- **Favourites strip** on tablets and computers: the cards without a section run across every column on top, 1 row of 1/1 cards or 2 rows mixing 1/1, 2/1 and 2/2; swipe sideways when they don't fit.
 - **Sections** with titles; move a whole section at once, or create one per Home Assistant area.
 - **Quick actions** on the right of each section title: turn every light of the section on or off (and, if you enable it, every climate device).
 - **A window for every card** with all its controls, and a **gear** for the card settings.
@@ -62,6 +64,9 @@ To update: HACS → Terral Home → **Redownload**, restart Home Assistant, then
 | Remove | In move mode, **−** on the card |
 | Sections | In move mode: **Add section**, tap a title to rename it, drag its three lines to move the block, **−** removes it (you choose whether its cards stay) |
 | Section quick actions | Round buttons on the right of a section title. Lights: amber with how many are on; a tap turns them all off, or all on when every light is off. In move mode, the gear on the title opens the section settings: name, which quick actions show (lights, climate) and **Remove section** |
+| Dashboard settings | **···** → **Dashboard settings**: name and icon in the sidebar, admins only, favourites strip (on/off, 1 or 2 rows), **Delete dashboard** (not the first one) |
+| New dashboard | **···** → **New dashboard** (admins): name and icon; it appears in the sidebar at once with an empty page |
+| Main dashboard of a device | In Home Assistant: your profile → the default dashboard of this device. Each Terral dashboard is a sidebar entry of its own |
 | Sections per room | **···** → **Create sections by room** |
 | Finish | **Done** |
 
@@ -200,6 +205,7 @@ Everything stays in your Home Assistant. The layout is saved in Home Assistant's
 - Robot vacuum: live map of the cleaning.
 - Notifications routed by house state (asleep → silent push, at home → Alexa and/or phone, away → phone; critical alerts always through) and appliance detectors (dishwasher, washing machine, oven…).
 - Collapsible sections.
+- Pages inside a dashboard, chosen with pills under the title.
 
 ## Development
 
@@ -225,6 +231,8 @@ Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto crista
 - **Ordenar**: pulsación larga en una tarjeta para entrar en modo mover; desliza para desplazarte y deja el dedo quieto un instante sobre una tarjeta para agarrarla. La esquina inferior derecha cambia el tamaño y **−** la quita.
 - **Mismo tamaño en móvil, tablet y PC**: cada apartado ocupa 2 columnas y en pantallas anchas se ponen varios apartados uno al lado de otro (cada uno en la columna más corta).
 - **Accesos rápidos** a la derecha del título de cada apartado: encienden o apagan todas sus luces (y, si lo activas, el clima). Se configuran con el engranaje del apartado en modo mover.
+- **Varios dashboards**: **···** → **Nuevo dashboard**. Cada uno es una entrada propia del menú de Home Assistant, con su nombre e icono, para ponerlo como principal en cada dispositivo. Sus ajustes (nombre, icono, favoritos) están en **···** → **Ajustes del dashboard**.
+- **Favoritos** en tablet y PC: las tarjetas sin apartado van arriba, a todo el ancho, en 1 fila (tarjetas 1/1) o 2 filas (1/1, 2/1 y 2/2); si no caben, se deslizan.
 - **Apartados**: en modo mover, **Añadir apartado**; toca el título para renombrarlo y arrastra las tres líneas para moverlo entero. También puedes crearlos por habitación desde **···**.
 - **Ajustes de cada tarjeta**: engranaje en su ventana.
 - **Actualizar**: HACS → **Volver a descargar**, reiniciar Home Assistant y cerrar y abrir la app.

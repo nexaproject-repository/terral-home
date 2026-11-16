@@ -7,7 +7,7 @@ How the pieces fit together, for anyone changing the code. User-facing documenta
 ```
 custom_components/terral_home/   Home Assistant integration (Python)
   __init__.py                    setup: static files, websocket API, panel, JS for dashboards
-  layout.py                      layout storage + websocket commands
+  layout.py                      dashboards, layout storage + websocket commands
   const.py, manifest.json        version, URLs, panel settings
   config_flow.py, strings.json,  single-step setup (no options yet)
   translations/
@@ -26,19 +26,20 @@ docs/                            this file and notes on Lovelace internals
 
 ## Integration (backend)
 
-`async_setup_entry` (in `__init__.py`):
+`async_setup_entry` (in `__init__.py`) serves the bundle, loads the dashboards and registers **one sidebar panel per dashboard**:
 
 1. Serves `www/` at `/terral_home` (registered once per Home Assistant run).
 2. Registers the websocket commands from `layout.py` (once per run).
 3. Loads the `LayoutStore`.
 4. Adds the bundle with `add_extra_js_url`, so the cards also work in normal dashboards.
-5. Registers the sidebar panel `terral-home` with `panel_custom` (web component `terral-home-panel`, `require_admin=False`). The module URL carries `?v=<version>` to bust caches, which is why an update needs a restart.
+5. Registers one sidebar panel per dashboard with `panel_custom` (web component `terral-home-panel`): `/terral-home` for the first one ("home"), `/terral-home-<id>` for the others, with the dashboard's title, icon and "admins only". The panel config carries `{version, dashboard, title}`. Creating a dashboard registers its panel, renaming updates it in place (`update=True`) and deleting removes it, so the sidebar changes without a restart. The module URL carries `?v=<version>` to bust caches, which is why an update needs a restart.
 
 `async_unload_entry` removes the panel and the extra JS URL.
 
-### Layout storage
+### Dashboards and layout storage
 
-One layout for the whole household, stored with `homeassistant.helpers.storage.Store` under the key `terral_home.layout` (file `.storage/terral_home.layout`).
+- `terral_home.dashboards`: `{"dashboards": [{"id", "title"?, "icon"?, "require_admin"?}]}`. The `home` dashboard always exists; without a title its sidebar entry is "Terral Home" and the page title "Mi casa".
+- Each dashboard has one layout, shared by the household: `terral_home.layout` for `home` (the file Terral Home used before dashboards existed) and `terral_home.layout_<id>` for the others. Deleting a dashboard deletes its file.
 
 ```jsonc
 {
@@ -46,6 +47,7 @@ One layout for the whole household, stored with `homeassistant.helpers.storage.S
     { "id": "k3f9…", "type": "light", "entity": "light.sofa", "w": 1, "h": 2,
       "name": "Sofa", "use_light_color": false }      // extra keys = card settings
   ],
+  "favorites": { "enabled": true, "rows": 2 },   // optional: strip on/off, 1 or 2 rows
   "sections": [
     { "id": "s1", "title": "Kitchen", "quick": ["lights", "climate"], "cards": [ /* same card objects */ ] }
   ]
@@ -58,13 +60,17 @@ One layout for the whole household, stored with `homeassistant.helpers.storage.S
 
 ### Websocket API
 
-Available to every user (not only admins).
+Layouts are available to every user; creating, changing or deleting dashboards needs an admin.
 
 | Command | Payload | Result |
 | --- | --- | --- |
-| `terral_home/layout/get` | — | the layout |
-| `terral_home/layout/save` | `{ "layout": <layout> }` | saves the whole layout and notifies subscribers |
-| `terral_home/layout/subscribe` | — | event messages with the new layout after every save |
+| `terral_home/layout/get` | `{ "dashboard"? }` (default `home`) | the layout |
+| `terral_home/layout/save` | `{ "dashboard"?, "layout": <layout> }` | saves the whole layout and notifies subscribers |
+| `terral_home/layout/subscribe` | `{ "dashboard"? }` | event messages with the new layout after every save |
+| `terral_home/dashboards/list` | — | the dashboards |
+| `terral_home/dashboards/create` | `{ "title", "icon"? }` (admins) | the new dashboard; its panel is in the sidebar at once |
+| `terral_home/dashboards/update` | `{ "dashboard", "title"?, "icon"?, "require_admin"? }` (admins) | the dashboard; its panel is updated in place |
+| `terral_home/dashboards/delete` | `{ "dashboard" }` (admins; not `home`) | deletes the dashboard, its panel and its layout |
 
 The panel always saves the **whole** layout (`_update()` clones it, applies the change and saves), so the last writer wins.
 
@@ -74,7 +80,9 @@ Built with Lit 3 and Vite into a single ES module. `npm run build` runs `tsc --n
 
 ### The panel (`panel/terral-home-panel.ts`)
 
-- Loads the layout through the websocket, subscribes to changes and renders it.
+- Reads its dashboard from `panel.config.dashboard`, loads that layout through the websocket, subscribes to changes and renders it. If Home Assistant reuses the element for another Terral dashboard, it starts over.
+- **Favourites strip** (tablets and computers, `layout.favorites`, on by default with 2 rows): the cards without a section are drawn above the lanes in a grid that flows sideways (`grid-auto-flow: column dense`, `rows` rows of `rowH`, columns of `colW`) and scrolls horizontally, with a fade on the right while there is more. In 1 row every card is shown as 1/1; in 2 rows a 4/2 card is shown as 2/2 (the stored size doesn't change). On phones they stay the first block.
+- **Dashboards**: **···** → **Dashboard settings** / **New dashboard** open `panel/terral-dashboard-sheet.ts` (sidebar name and icon, admins only, favourites, delete); a new dashboard opens at `/terral-home-<id>`.
 - **Same size everywhere**: a column is 160–184 px (about a phone column), every block is `SECTION_COLS` = 2 columns wide (a Terral setting may offer 4 later). The cards without a section form the first block (no title); each section is another. `_measure()` works out how many blocks fit side by side ("lanes": 1 on phones, 2 on tablets, 3–5 on computers) and the column width; the page is centred at that width. Row height is 85 % of half a column.
 - **Lanes (option A)**: `_rowsOf()` simulates the grid's `row dense` packing to know each block's height, and `_assignLanes()` puts each block, in order, in the shortest lane, so there are no gaps. Dragging a section picks the lane under the finger and the position by the sections' middles (`_hitSection`), shows a line there and moves the section in the list; the lanes are then recomputed.
 - Creates the card elements itself (`CARD_TAGS`) and passes `hass` and a config with `view_layout.terral = { w, h }`.

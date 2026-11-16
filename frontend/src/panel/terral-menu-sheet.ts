@@ -1,14 +1,22 @@
-// "···" menu: arrange the home, and (later) Terral Home settings.
+// "···" menu: arrange the page, sections by room, this dashboard's settings,
+// a new dashboard (admins) and, later, Terral Home settings.
 import { css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import type { HomeAssistant } from "../ha-types";
 import { t } from "../i18n";
-import { gearIcon, gripIcon, roomsIcon } from "../shared/icons";
+import { gearIcon, gripIcon, plusIcon, roomsIcon } from "../shared/icons";
+
+export interface MenuActions {
+  onEdit?: () => void;
+  onRooms?: () => void;
+  onDashboard?: () => void;
+  onNewDashboard?: () => void;
+}
 import { TerralSheet } from "../shared/terral-sheet";
 
 @customElement("terral-menu-sheet")
 export class TerralMenuSheet extends TerralSheet {
-  @property({ attribute: false }) actions: { onEdit?: () => void; onRooms?: () => void } = {};
+  @property({ attribute: false }) actions: MenuActions = {};
   @property() version = "";
 
   protected get heading() {
@@ -31,6 +39,22 @@ export class TerralMenuSheet extends TerralSheet {
           <span class="ic">${roomsIcon()}</span>
           <span class="nm">${t(this.hass, "by_rooms")}<small>${t(this.hass, "by_rooms_sub")}</small></span>
         </button>
+        <button class="row" @click=${() => {
+          this.close();
+          this.actions.onDashboard?.();
+        }}>
+          <span class="ic">${gearIcon()}</span>
+          <span class="nm">${t(this.hass, "dash_settings")}<small>${t(this.hass, "dash_settings_sub")}</small></span>
+        </button>
+        ${this.actions.onNewDashboard
+          ? html`<button class="row" @click=${() => {
+              this.close();
+              this.actions.onNewDashboard?.();
+            }}>
+              <span class="ic">${plusIcon(20)}</span>
+              <span class="nm">${t(this.hass, "dash_new")}<small>${t(this.hass, "dash_new_sub")}</small></span>
+            </button>`
+          : ""}
         <button class="row" disabled>
           <span class="ic">${gearIcon()}</span>
           <span class="nm">${t(this.hass, "terral_settings")}<small>${t(this.hass, "coming_soon")}</small></span>
@@ -99,7 +123,7 @@ export class TerralMenuSheet extends TerralSheet {
   ];
 }
 
-export function openMenuSheet(hass: HomeAssistant, version: string, actions: { onEdit?: () => void; onRooms?: () => void }) {
+export function openMenuSheet(hass: HomeAssistant, version: string, actions: MenuActions) {
   const el = document.createElement("terral-menu-sheet");
   el.hass = hass;
   el.version = version;

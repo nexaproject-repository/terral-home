@@ -2,6 +2,10 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.13.0 — 2026-11-16
+- **Several dashboards.** Each one is its own entry in Home Assistant's sidebar with its own name, icon and layout, so it can be the main dashboard of a device. **···** → **New dashboard** (admins) and **Dashboard settings** (name, icon, admins only, delete). The existing layout is the first dashboard and is kept as it was.
+- **Favourites strip** on tablets and computers: the cards without a section run across every column on top, 1 row (1/1 cards) or 2 rows (1/1, 2/1, 2/2), and slide sideways when they don't fit. On phones they stay the first block.
+
 ## 0.12.0 — 2026-11-16
 - **Section quick actions**: round buttons on the right of a section title. Lights (on by default): amber with how many are on; a tap turns them all off, or all on. Climate (opt-in): the same for the section's climate devices. Hidden in move mode.
 - **Section settings** from a gear on the title in move mode: name, quick actions and remove section.
