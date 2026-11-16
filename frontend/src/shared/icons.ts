@@ -1,3 +1,5 @@
+// Line icons used across Terral Home (24 px grid, currentColor stroke), grouped
+// by card. Weather icons are coloured and live in weather/weather-look.ts.
 import { svg } from "lit";
 
 const BULB_BODY =

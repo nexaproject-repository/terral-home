@@ -1,6 +1,6 @@
-// Terral · Luz — card for a light or an HA light group.
-// Two touch zones: the icon toggles, the text opens the light window.
-// Holding anywhere on the card also opens the window.
+// Terral · Luz — card for a light or an HA light group (1/1, 2/1, 2/2, 4/2).
+// The icon toggles; a tap anywhere else opens the light window (gear inside
+// for the card settings); a long press moves the card in the Terral panel.
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HassEntity, HomeAssistant, LovelaceCardConfig } from "../ha-types";

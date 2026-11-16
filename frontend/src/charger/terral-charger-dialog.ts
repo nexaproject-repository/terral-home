@@ -1,6 +1,6 @@
-// Charger window: current state, lock button, last 7 days and recent charges.
-// The gear (top right) opens the settings: lock entity + invert, data sensors
-// and maximum power. Every change is saved straight away.
+// Charger window: current state, lock button, last 7 days and recent charges
+// (sessions rebuilt from the power sensor's history). The gear (top right)
+// closes it and opens the shared card settings (panel/terral-card-config.ts).
 import { css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant } from "../ha-types";

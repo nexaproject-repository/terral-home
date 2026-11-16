@@ -10,62 +10,196 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.9.0). Not ready for daily use yet.
+> 🚧 Early development (v0.9.1). It works day to day, but things still change between versions.
 
-Terral Home brings a clean, glass-style look to Home Assistant, inspired by modern mobile home apps, plus a smart notification system that knows whether you are home, away or asleep.
+Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
-## What it will include
+- [What you get today](#what-you-get-today)
+- [Installation](#installation-hacs)
+- [Using Terral Home](#using-terral-home)
+- [Cards](#cards)
+- [Using the cards in other dashboards](#using-the-cards-in-other-dashboards)
+- [Privacy](#privacy)
+- [Roadmap](#roadmap)
+- [Development](#development)
+- [Español](#español)
 
-- **Dashboard view** with a 2-column grid on phones and 4 columns on tablets. Card sizes (height/width): 1/1, 2/1, 2/2 and 4/2.
-- **Cards** for lights, switches, climate, covers, scenes, sensors, cameras and appliances, all with a visual editor (no YAML).
-- **Drag and resize** cards directly on the dashboard.
-- **Navigation menu**: hidden behind a button on phones; a compact sidebar on tablets that expands over the cards with a swipe.
-- **Backgrounds**: 10 built-in wallpapers for phone, tablet and desktop, plus your own.
-- **Theme** that matches Home Assistant's own dialogs and menus.
-- **Notifications** routed by house state:
-  - asleep → silent push to the phone, seen in the morning;
-  - at home → Alexa, or Alexa + phone;
-  - away → phone only;
-  - critical alerts always get through.
-- **Appliance detectors** (dishwasher, washing machine, oven…) based on power or state.
+## What you get today
+
+- **Terral Home page** in the sidebar: full screen, no Home Assistant toolbar, with the "crepúsculo" background and the phone's status and home bars blended in.
+- **Grid** of 2 columns on phones and 4 on tablets. Card sizes (height/width): **1/1, 2/1, 2/2 and 4/2**.
+- **Add cards by type** (light, alarm, EV charger, climate, weather), then choose the device and name.
+- **Arrange by touch**: long-press a card to move it, drag the bottom-right corner to resize, remove with **−**.
+- **Sections** with titles; move a whole section at once, or create one per Home Assistant area.
+- **A window for every card** with all its controls, and a **gear** for the card settings.
+- **One shared layout** for the whole household, stored by the integration.
+- Spanish and English.
 
 ## Installation (HACS)
 
+Requires Home Assistant **2026.3** or newer.
+
 1. HACS → ⋮ → **Custom repositories**.
 2. Add `https://github.com/nexaproject-repository/terral-home` as **Integration**.
-3. Install **Terral Home** and restart Home Assistant.
+3. Install **Terral Home** and **restart Home Assistant**.
 4. **Settings → Devices & services → Add integration → Terral Home**.
 
-## Getting started (v0.9)
+**Terral Home** then appears in the sidebar.
 
-After adding the integration, **Terral Home** appears in the sidebar. It is a full-screen page of its own (no Home Assistant toolbar):
+To update: HACS → Terral Home → **Redownload**, restart Home Assistant, then fully close and reopen the Companion app (it caches the page).
 
-- It starts empty. Tap **+** (top right) to add a card: pick the kind of card (light, alarm, EV charger), then its device and name in the settings sheet (resize later with the corner). Every card's window has a **gear** that opens the same settings (and **Quitar tarjeta**).
-- Tap a card to open its window; tap the bulb to switch it on or off.
-- **Long-press** a card to arrange the home: drag cards to reorder, **−** removes one, drag the bottom-right corner to resize (1/1, 2/1, 2/2, 4/2), **Listo** finishes.
-- **Sections**: in move mode, **Añadir apartado** adds a titled section. Tap a section title to rename it, drag its three lines to move the whole block, drag cards between sections, **−** removes a section (you choose whether its cards stay).
-- **Alarm card** (2/2, works with [Alarmo](https://github.com/nielsfaber/alarmo) and any alarm panel): one button per enabled mode (away, home, vacation), a blinking countdown while arming, only **Desarmar** once armed, a code pad when the alarm needs a code, and **Armar igualmente** when Alarmo finds something open. Tap the card for night/custom modes, skipping the delay and open sensors.
-- **EV charger card** (all sizes): the icon locks or unlocks the charger. Pick the switch, lock or `input_boolean` that blocks or enables charging and use **Invertir** if on means locked; the settings explain what each state does. Status, power and session energy are detected from the same device. Colours: green while charging, warm cream with a red lock when the car is plugged in but the charger is locked, sky blue when ready. Tap the card for the last 7 days and recent charges; the gear opens the settings.
-- **Climate card** (all sizes, any climate entity: air conditioning, ducted, heating, heat pump): the icon turns it on and off; 2/2 has mode, − temperature + and fan speed; 4/2 a big draggable dial with mode and fan at the bottom. Temperature and fan dim in modes that don't use them (configurable per mode), the mode button hides when there is only one mode, and min / max temperature and steps are set in the card settings. Swing shows in the window only when enabled there.
-- **Weather card** ("Cielo", all sizes, Met.no or any weather entity): the card is the sky, a gradient that follows the weather and the time of day, with falling rain or snow. 2/2 shows the next hours (or days), 4/2 hours and days; the window has humidity, wind, pressure, clouds, dew point, rain today, 24 hours and up to 7 days.
-- **···** opens the Terral menu: create sections from your Home Assistant areas (settings are coming).
+## Using Terral Home
 
-The layout is stored by the integration and shared by everyone in the house.
+| Action | How |
+| --- | --- |
+| Add a card | **+** (top right) → pick the type → pick the device (or the alarm / weather) and the name → **Add** |
+| Open a card's window | Tap the card |
+| Quick action | Tap the card's icon (switch a light, lock the charger, turn the climate on or off…) |
+| Card settings | Gear in the card's window → **Save**, or **Remove card** |
+| Move mode | Long-press any card. In move mode, swipe to scroll; rest a finger on a card for a moment to pick it up |
+| Resize | In move mode, drag the arc at the bottom-right corner |
+| Remove | In move mode, **−** on the card |
+| Sections | In move mode: **Add section**, tap a title to rename it, drag its three lines to move the block, **−** removes it (you choose whether its cards stay) |
+| Sections per room | **···** → **Create sections by room** |
+| Finish | **Done** |
 
-The cards can also be used in any regular dashboard as `custom:terral-home-light`, `custom:terral-home-alarm`, `custom:terral-home-charger`, `custom:terral-home-climate` and `custom:terral-home-weather`.
+## Cards
+
+All cards share the same look: an icon circle, name and status, and a tinted background when the device is active. Their settings are opened from the gear in the window.
+
+### Light
+
+For a light or a Home Assistant light group.
+
+- **Sizes**: 1/1, 2/1, 2/2 and 4/2 (4/2 for colour, temperature and group lights).
+- **Icon** switches it on or off; the card tints with the light's real colour.
+- **Window**: brightness, temperature, colours and, for groups, each member.
+- **Settings**: device (light groups listed apart), which light of the device, tint with the light colour.
+
+### Alarm
+
+For [Alarmo](https://github.com/nielsfaber/alarmo) or any alarm panel. 2/2.
+
+- One button per enabled mode (away, home, vacation). While arming, an amber ring empties and the seconds blink; once armed only **Disarm** shows.
+- A code pad when the alarm needs a code; **Arm anyway** when Alarmo finds something open.
+- Entry delay counts down in red; a triggered alarm flashes.
+- **Window**: every mode (night and custom too), skip the delay, open and bypassed sensors.
+- **Settings**: name only (the alarm is picked automatically; a picker shows if there is more than one). The type is greyed out with "Alarmo is not installed" when there is no alarm.
+
+### EV charger
+
+Lock and unlock the charger and follow the charge.
+
+- **Sizes**: 1/1, 2/1, 2/2 and 4/2 (4/2 adds the last-hour power chart).
+- **Colours**: green while charging; warm cream with an orange icon and a dark red lock when the car is plugged in but the charger is locked; sky blue when ready; glass with a grey lock when locked without a car.
+- **Window**: last 7 days and recent charges (from the power sensor's history).
+- **Settings**: charger device, the switch / lock / `input_boolean` that blocks charging, **Invert** (with an explanation of what on and off mean), status / power / energy sensors (detected on the same device), maximum power.
+
+### Climate
+
+For any climate entity: air conditioning (split or ducted), heating, heat pump.
+
+- **Sizes**: 1/1, 2/1, 2/2 and 4/2.
+- **Icon** turns it on and off (back to the last mode); "off" is never listed as a mode.
+- **2/2**: mode · − temperature + · fan speed. **4/2**: a large draggable dial, mode bottom-left, fan bottom-right.
+- Temperature and fan dim in the modes that don't use them; the mode button is hidden when the unit has a single mode.
+- **Window**: temperature, modes, fan speed (with the reason when it is fixed), swing (only if enabled in the settings), presets.
+- **Settings**: device and name, minimum / maximum temperature and steps (0.5° or 1°), what to show in each mode, show swing.
+
+### Weather ("Cielo")
+
+For Met.no or any weather entity.
+
+- **Sizes**: 1/1, 2/1, 2/2 and 4/2.
+- The card is the sky: a gradient that follows the weather and the time of day (sun below the horizon), with falling rain or snow.
+- **2/2**: next 6 hours (or days). **4/2**: next hours and 3 days with min–max bars.
+- **Window**: humidity, wind and direction, pressure, clouds, dew point, rain today, 24 hours and 5 or 7 days.
+- **Settings**: name, hours or days on 2/2, rain/snow animation, current details, forecast days.
+
+## Using the cards in other dashboards
+
+The cards are also registered for normal Lovelace dashboards. Settings made in the gear are saved only inside the Terral Home page; in other dashboards use YAML.
+
+```yaml
+type: custom:terral-home-light
+entity: light.living_room
+name: Living room           # optional
+use_light_color: true       # tint with the light colour
+group_by_area: auto         # auto | always | never (group window)
+```
+
+```yaml
+type: custom:terral-home-alarm
+entity: alarm_control_panel.alarmo
+name: Alarm                 # optional
+```
+
+```yaml
+type: custom:terral-home-charger
+entity: switch.charger_lock # switch, lock or input_boolean
+invert: true                # on = locked
+status_entity: sensor.charger_status   # optional, "none" to hide
+power_entity: sensor.charger_power     # optional
+energy_entity: sensor.charger_energy   # optional
+max_power: 7.4                         # kW, optional
+```
+
+```yaml
+type: custom:terral-home-climate
+entity: climate.air_conditioning
+min_temp: 17                # optional, within the unit's limits
+max_temp: 28
+temp_step: 0.5              # 0.5 or 1
+show_swing: false
+mode_rules:                 # optional: what each mode shows
+  dry: { t: false, f: false }   # t = temperature, f = fan speed
+```
+
+```yaml
+type: custom:terral-home-weather
+entity: weather.home
+forecast_2x2: hourly        # hourly | daily
+animate: true
+show_details: true
+forecast_days: 7            # 5 | 7
+```
+
+## Privacy
+
+Everything stays in your Home Assistant. The layout is saved in Home Assistant's storage (`.storage/terral_home.layout`); the cards only read entity states and history and call Home Assistant services. Terral Home sends nothing to outside services.
+
+## Roadmap
+
+- Own navigation menu (phone button, compact sidebar on tablets).
+- Terral Home settings: general colour palette, 10 backgrounds, theme.
+- More cards: covers, sensors, scenes, cameras, appliances.
+- Notifications routed by house state (asleep → silent push, at home → Alexa and/or phone, away → phone; critical alerts always through) and appliance detectors (dishwasher, washing machine, oven…).
+- Collapsible sections.
 
 ## Development
 
-- `custom_components/terral_home/`: the integration (Python). It also serves the frontend.
-- `frontend/`: view, cards and editors (TypeScript + Lit + Vite). `npm install && npm run build` writes the bundle to `custom_components/terral_home/www/terral-home.js`.
+See **[docs/architecture.md](docs/architecture.md)** for how the integration and the frontend fit together, the websocket API, the layout format, the card contract and the release steps. Changes per version are in **[CHANGELOG.md](CHANGELOG.md)**.
+
+Quick start:
+
+```bash
+cd frontend
+npm install
+npm run build      # type-checks and writes custom_components/terral_home/www/terral-home.js
+```
 
 ---
 
 ## Español
 
-Terral Home da a Home Assistant un aspecto limpio, con efecto cristal, inspirado en las apps de casa de los móviles actuales. Además incluye un sistema de avisos que sabe si estáis en casa, fuera o durmiendo.
+Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto cristal, inspirada en las apps de casa de los móviles: una página propia a pantalla completa, tarjetas que añades y colocas con el dedo y una ventana para cada dispositivo.
 
-Instalación: añade este repositorio en HACS como **repositorio personalizado** de tipo **Integración**, instala **Terral Home**, reinicia y añade la integración desde **Ajustes → Dispositivos y servicios**.
+- **Instalación**: en HACS añade este repositorio como **repositorio personalizado** de tipo **Integración**, instala **Terral Home**, reinicia y añade la integración desde **Ajustes → Dispositivos y servicios**. Aparecerá **Terral Home** en la barra lateral.
+- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo) → dispositivo y nombre → **Añadir**.
+- **Ordenar**: pulsación larga en una tarjeta para entrar en modo mover; desliza para desplazarte y deja el dedo quieto un instante sobre una tarjeta para agarrarla. La esquina inferior derecha cambia el tamaño y **−** la quita.
+- **Apartados**: en modo mover, **Añadir apartado**; toca el título para renombrarlo y arrastra las tres líneas para moverlo entero. También puedes crearlos por habitación desde **···**.
+- **Ajustes de cada tarjeta**: engranaje en su ventana.
+- **Actualizar**: HACS → **Volver a descargar**, reiniciar Home Assistant y cerrar y abrir la app.
 
 ## License
 

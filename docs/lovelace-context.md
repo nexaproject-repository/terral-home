@@ -1,5 +1,7 @@
 # Contexto Lovelace para Terral Home
 
+> **Nota (v0.3 en adelante):** Terral Home ya no usa una vista ni una estrategia de Lovelace: es un panel propio a pantalla completa (ver [architecture.md](architecture.md)). Estas notas siguen siendo útiles para las tarjetas cuando se usan en dashboards normales.
+
 Resumen de la documentación oficial y del código del frontend de Home Assistant que afecta a Terral Home. Revisado el **2026-11-15**.
 
 Fuentes:

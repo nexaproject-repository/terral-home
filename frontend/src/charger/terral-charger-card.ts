@@ -98,7 +98,7 @@ export class TerralChargerCard extends LitElement {
     this._cancelHold();
   }
 
-  /** Opens the window straight on its settings page (used right after adding the card). */
+  /** Opens the card settings directly, without the window first. */
   openSettings() {
     this._openWindow("settings");
   }

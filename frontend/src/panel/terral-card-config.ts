@@ -1,12 +1,18 @@
 // Card settings sheet, used when adding a card (after choosing its type) and
-// from the gear in every card's window. Live preview with the size on top,
-// then "General" (device — or the alarm itself, Alarmo has no device — and
-// name) and what each card type needs.
+// from the gear in every card's window:
+//   General — device (filtered per card type, by area) or, for the alarm and
+//             the weather, the entity itself (they have no device), and name.
+//   Per type — light entity / tint; charger lock switch, invert, data sensors,
+//             max power; climate limits, steps, per-mode controls, swing;
+//             weather forecast options.
+// The size is not chosen here: new cards get a default and the corner resizes.
+// In "edit" mode it reports through terral-card-config / terral-card-remove
+// events (see openCardSettings), which the Terral panel stores in the layout.
 import { css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant } from "../ha-types";
 import { t, type StringKey } from "../i18n";
-import { backIcon, checkIcon, chevronIcon, evChargerIcon, bulbIcon, searchIcon, shieldIcon } from "../shared/icons";
+import { backIcon, bulbIcon, checkIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
 import { isGroup } from "../light/light-model";
 import {
@@ -41,9 +47,7 @@ export interface CardConfigOptions {
   onRemove?: () => void;
 }
 
-const TAGS: Record<CardType, string> = { light: "terral-home-light", alarm: "terral-home-alarm", charger: "terral-home-charger", climate: "terral-home-climate", weather: "terral-home-weather" };
 const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather" };
-const SIZE_LABEL = (w: number, h: number) => (h === 4 ? "4/2" : h === 1 ? "1/1" : w === 2 ? "2/2" : "2/1");
 
 type Sub = "device" | "entity" | "alarm" | "weather" | "lock" | "status_entity" | "power_entity" | "energy_entity";
 type Dev = { id: string; name?: string | null; name_by_user?: string | null; area_id?: string | null; manufacturer?: string | null; model?: string | null };
@@ -57,7 +61,6 @@ export class TerralCardConfig extends TerralSheet {
   @state() private _sub?: Sub;
   @state() private _q = "";
   @state() private _allDevices = false;
-  private _preview?: HTMLElement & { hass?: HomeAssistant; setConfig(c: unknown): void; getTerralSizes?: () => { w: number; h: number }[] };
 
   protected get heading() {
     if (this._sub === "entity" && this.draft.type === "climate") return t(this.hass, "climate_entity");
@@ -110,38 +113,6 @@ export class TerralCardConfig extends TerralSheet {
   private _match(...texts: (string | null | undefined)[]) {
     const q = this._q.trim().toLowerCase();
     return !q || texts.some((x) => x?.toLowerCase().includes(q));
-  }
-
-  // ---- Preview -----------------------------------------------------------------
-
-  private _sizes(): { w: number; h: number }[] {
-    const s = this._preview?.getTerralSizes?.();
-    return s?.length ? s : [{ w: 2, h: 2 }];
-  }
-
-  private _renderPreview(): TemplateResult {
-    const { type, config, w, h } = this.draft;
-    if (!config.entity) {
-      return html`<div class="prev"><div class="pgrid"><div class="cell" style="grid-column:span 2;grid-row:span 2">
-        <div class="ph">${type === "alarm" ? shieldIcon(26) : type === "charger" ? evChargerIcon(26) : bulbIcon(false, 26)}<span>${t(this.hass, type === "alarm" ? "pick_alarm" : "pick_device")}</span></div>
-      </div></div></div>`;
-    }
-    if (!this._preview || this._preview.localName !== TAGS[type]) this._preview = document.createElement(TAGS[type]) as typeof this._preview;
-    try {
-      this._preview!.setConfig({ ...config, type: `custom:${TAGS[type]}`, view_layout: { terral: { w, h } } });
-    } catch {
-      /* incomplete config */
-    }
-    this._preview!.hass = this.hass;
-    const sizes = this._sizes();
-    return html`<div class="prev">
-      <div class="pgrid"><div class="cell" style="grid-column:span ${w};grid-row:span ${h === 4 ? 4 : h}">${this._preview}</div></div>
-      ${sizes.length > 1
-        ? html`<div class="sizes">${sizes.map(
-            (s) => html`<button class="sz ${s.w === w && s.h === h ? "on" : ""}" @click=${() => (this.draft = { ...this.draft, w: s.w as 1 | 2, h: s.h as 1 | 2 | 4 })}>${SIZE_LABEL(s.w, s.h)}</button>`,
-          )}</div>`
-        : nothing}
-    </div>`;
   }
 
   // ---- Main page ---------------------------------------------------------------
@@ -530,54 +501,6 @@ export class TerralCardConfig extends TerralSheet {
         border-radius: 18px;
         background: rgba(255, 255, 255, 0.08);
         overflow: hidden;
-      }
-      .prev {
-        flex: none;
-        padding: 14px;
-        border-radius: 24px;
-        background: rgba(255, 255, 255, 0.05);
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-      /* Same proportions as the home grid on a phone. */
-      .pgrid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-auto-rows: 62px;
-        gap: 10px;
-        pointer-events: none;
-      }
-      .ph {
-        height: 100%;
-        border-radius: 22px;
-        border: 2px dashed rgba(255, 255, 255, 0.25);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.65);
-        box-sizing: border-box;
-      }
-      .sizes {
-        display: flex;
-        gap: 6px;
-        justify-content: center;
-      }
-      .sz {
-        height: 30px;
-        padding: 0 12px;
-        border-radius: 15px;
-        background: rgba(255, 255, 255, 0.1);
-        font-size: 12.5px;
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.75);
-      }
-      .sz.on {
-        background: #fff;
-        color: #23233a;
       }
       .li {
         width: 100%;
