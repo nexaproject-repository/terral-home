@@ -566,7 +566,7 @@ export class TerralHomePanel extends LitElement {
     return html`<nav class="pills" aria-label=${t(this.hass, "pages")}>
       ${pill("", this._homeTitle)}
       ${pages.map((pg) => pill(pg.id, pg.title))}
-      ${edit ? html`<button class="pg add" @click=${() => this._addPage()}>${plusIcon(16)}${t(this.hass, "page_add")}</button>` : nothing}
+      ${edit ? html`<button class="pg add" aria-label=${t(this.hass, "page_add")} title=${t(this.hass, "page_add")} @click=${() => this._addPage()}>${plusIcon(18)}</button>` : nothing}
     </nav>`;
   }
 
@@ -1455,8 +1455,14 @@ export class TerralHomePanel extends LitElement {
       background: none;
       box-shadow: none;
       border: 2px dashed rgba(255, 255, 255, 0.45);
-      padding: 0 14px;
-      gap: 6px;
+      width: 36px;
+      padding: 0;
+      justify-content: center;
+      flex: none;
+      box-sizing: border-box;
+    }
+    .pg.add svg {
+      display: block;
     }
     .pg.drop {
       outline: 2px dashed rgba(255, 255, 255, 0.95);

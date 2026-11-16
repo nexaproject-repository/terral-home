@@ -1,6 +1,6 @@
 {
   "name": "terral-home-frontend",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "private": true,
   "type": "module",
   "description": "Terral Home panel and cards for Home Assistant",

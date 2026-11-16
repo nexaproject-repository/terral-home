@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.15.1). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.15.2). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -68,7 +68,7 @@ To update: HACS → Terral Home → **Redownload**, restart Home Assistant, then
 | Section quick actions | Round buttons on the right of a section title. Lights: amber with how many are on; a tap turns them all off, or all on when every light is off. In move mode, the gear on the title opens the section settings: name, which quick actions show (lights, climate) and **Remove section** |
 | Dashboard settings | **···** → **Dashboard settings**: name and icon in the sidebar, admins only, favourites strip (on/off, 1 or 2 rows), **Delete dashboard** (not the first one) |
 | New dashboard | **···** → **New dashboard** (admins): name and icon; it appears in the sidebar at once with an empty page |
-| Pages | In move mode: **+ Página** adds a page; tap the active pill (gear) to rename it, move it before/after or delete it (its cards go to the first page or away). Drop a card on a pill to move it to that page. Every page has its own address (`/terral-home/<page>`) |
+| Pages | In move mode: the round **+** after the pills adds a page; tap the active pill (gear) to rename it, move it before/after or delete it (its cards go to the first page or away). Drop a card on a pill to move it to that page. Every page has its own address (`/terral-home/<page>`) |
 | Main dashboard of a user | Sign in as that user → open the dashboard → **···** → **Dashboard settings** → **Use as my main dashboard** (and, if wanted, **Only this dashboard in my sidebar**). Admins can also make it the main one for the whole house. Mark the other dashboards **Admins only** so non-admin users can't open them |
 | Sections per room | **···** → **Create sections by room** |
 | Finish | **Done** |
@@ -260,7 +260,7 @@ Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto crista
 - **Accesos rápidos** a la derecha del título de cada apartado: encienden o apagan todas sus luces (y, si lo activas, el clima). Se configuran con el engranaje del apartado en modo mover.
 - **Varios dashboards**: **···** → **Nuevo dashboard**. Cada uno es una entrada propia del menú de Home Assistant, con su nombre e icono, para ponerlo como principal en cada dispositivo. Sus ajustes (nombre, icono, favoritos) están en **···** → **Ajustes del dashboard**.
 - **Favoritos** en tablet y PC: las tarjetas sin apartado van arriba, a todo el ancho, en 1 fila (tarjetas 1/1) o 2 filas (1/1, 2/1 y 2/2); si no caben, se deslizan.
-- **Páginas** dentro de un dashboard: píldoras bajo el título. En modo mover, **+ Página** crea una; la píldora activa (engranaje) la renombra, la mueve o la elimina. Arrastra una tarjeta a una píldora para pasarla a esa página.
+- **Páginas** dentro de un dashboard: píldoras bajo el título. En modo mover, el **+** redondo tras las píldoras crea una; la píldora activa (engranaje) la renombra, la mueve o la elimina. Arrastra una tarjeta a una píldora para pasarla a esa página.
 - **Un dashboard para cada persona** (por ejemplo, Natalia, que no es administradora): crea su dashboard y marca los demás como **Solo administradores**. Después, entrando con el usuario de Natalia, abre su dashboard → **···** → **Ajustes del dashboard** → **Usar como mi dashboard principal** y **Solo este dashboard en mi menú**. Al entrar verá solo el suyo.
 - **Apartados**: en modo mover, **Añadir apartado**; toca el título para renombrarlo y arrastra las tres líneas para moverlo entero. También puedes crearlos por habitación desde **···**.
 - **Ajustes de cada tarjeta**: engranaje en su ventana.

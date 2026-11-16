@@ -2,6 +2,9 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.15.2 — 2026-11-16
+- Pages: in move mode, the button to add a page is now a round **+** (the "Página" label was drawn badly).
+
 ## 0.15.1 — 2026-11-16
 - Switch card: the price of a kWh and the cost are gone from its settings and window.
 
