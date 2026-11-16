@@ -1,4 +1,6 @@
-// Small floating menu (mode / fan speed), opened from a button.
+// Small floating menu (mode / fan speed), opened from a button. Everything
+// behind it is blurred; a tap outside only closes the menu (it never reaches
+// the card underneath).
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
@@ -17,22 +19,25 @@ export class TerralPop extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    setTimeout(() => window.addEventListener("pointerdown", this._outside, true));
-    window.addEventListener("scroll", this._close, true);
     window.addEventListener("keydown", this._key);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    window.removeEventListener("pointerdown", this._outside, true);
-    window.removeEventListener("scroll", this._close, true);
     window.removeEventListener("keydown", this._key);
   }
 
-  private _close = () => this.remove();
   private _key = (e: KeyboardEvent) => e.key === "Escape" && this.remove();
-  private _outside = (e: Event) => {
-    if (!e.composedPath().includes(this)) this.remove();
+
+  /** The backdrop swallows the whole tap and closes on click (not on press),
+   *  so the following click can't land on whatever is underneath. */
+  private _swallow = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  private _backdropClick = (e: Event) => {
+    this._swallow(e);
+    this.remove();
   };
 
   protected updated(): void {
@@ -47,7 +52,8 @@ export class TerralPop extends LitElement {
   }
 
   render() {
-    return html`<div class="pop" role="menu">
+    return html`<div class="backdrop" @pointerdown=${this._swallow} @touchmove=${this._swallow} @wheel=${this._swallow} @click=${this._backdropClick}></div>
+      <div class="pop" role="menu">
       ${this.items.map(
         (it) => html`<button role="menuitemradio" aria-checked=${!!it.selected} class=${it.selected ? "sel" : ""} @click=${() => {
           it.run();
@@ -58,6 +64,21 @@ export class TerralPop extends LitElement {
   }
 
   static styles = css`
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(10, 12, 30, 0.35);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      animation: fade 0.15s ease-out;
+      touch-action: none;
+    }
+    @keyframes fade {
+      from {
+        opacity: 0;
+      }
+    }
     .pop {
       position: fixed;
       z-index: 10000;

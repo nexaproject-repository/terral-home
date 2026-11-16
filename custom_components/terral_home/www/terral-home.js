@@ -5985,15 +5985,17 @@ var ur = Object.defineProperty, gr = Object.getOwnPropertyDescriptor, Le = (t, e
 };
 let St = class extends D {
   constructor() {
-    super(...arguments), this.items = [], this.align = "left", this._close = () => this.remove(), this._key = (t) => t.key === "Escape" && this.remove(), this._outside = (t) => {
-      t.composedPath().includes(this) || this.remove();
+    super(...arguments), this.items = [], this.align = "left", this._key = (t) => t.key === "Escape" && this.remove(), this._swallow = (t) => {
+      t.preventDefault(), t.stopPropagation();
+    }, this._backdropClick = (t) => {
+      this._swallow(t), this.remove();
     };
   }
   connectedCallback() {
-    super.connectedCallback(), setTimeout(() => window.addEventListener("pointerdown", this._outside, !0)), window.addEventListener("scroll", this._close, !0), window.addEventListener("keydown", this._key);
+    super.connectedCallback(), window.addEventListener("keydown", this._key);
   }
   disconnectedCallback() {
-    super.disconnectedCallback(), window.removeEventListener("pointerdown", this._outside, !0), window.removeEventListener("scroll", this._close, !0), window.removeEventListener("keydown", this._key);
+    super.disconnectedCallback(), window.removeEventListener("keydown", this._key);
   }
   updated() {
     const t = this.renderRoot.querySelector(".pop");
@@ -6002,7 +6004,8 @@ let St = class extends D {
     t.style.left = `${Math.max(8, Math.min(window.innerWidth - s - 8, n))}px`, t.style.top = `${e.top - i - 8 > 8 ? e.top - i - 8 : Math.min(window.innerHeight - i - 8, e.bottom + 8)}px`;
   }
   render() {
-    return h`<div class="pop" role="menu">
+    return h`<div class="backdrop" @pointerdown=${this._swallow} @touchmove=${this._swallow} @wheel=${this._swallow} @click=${this._backdropClick}></div>
+      <div class="pop" role="menu">
       ${this.items.map(
       (t) => h`<button role="menuitemradio" aria-checked=${!!t.selected} class=${t.selected ? "sel" : ""} @click=${() => {
         t.run(), this.remove();
@@ -6012,6 +6015,21 @@ let St = class extends D {
   }
 };
 St.styles = A`
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(10, 12, 30, 0.35);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      animation: fade 0.15s ease-out;
+      touch-action: none;
+    }
+    @keyframes fade {
+      from {
+        opacity: 0;
+      }
+    }
     .pop {
       position: fixed;
       z-index: 10000;
@@ -6497,7 +6515,7 @@ let dt = class extends D {
   }
   _icon(t, e) {
     return h`<button class="icon" aria-label=${T(t) ? o(this.hass, "turn_on") : o(this.hass, "turn_off")} ?disabled=${_t(t)} @click=${this._power}>
-      ${xt(T(t) ? "off" : t.state, e)}<span class="ring" style="--p:${this._pct(t)}"></span>
+      ${xt(T(t) ? "off" : t.state, e)}
     </button>`;
   }
   _modeBtn(t) {
@@ -7269,7 +7287,7 @@ function Br(t, e, s) {
   const i = document.createElement("terral-menu-sheet");
   return i.hass = t, i.version = e, i.actions = s, document.body.appendChild(i), i;
 }
-const tn = "0.8.0";
+const tn = "0.8.1";
 var qr = Object.defineProperty, Fr = Object.getOwnPropertyDescriptor, z = (t, e, s, i) => {
   for (var n = i > 1 ? void 0 : i ? Fr(e, s) : e, a = t.length - 1, r; a >= 0; a--)
     (r = t[a]) && (n = (i ? r(e, s, n) : r(n)) || n);

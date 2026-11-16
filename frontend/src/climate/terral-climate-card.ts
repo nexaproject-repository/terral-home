@@ -287,7 +287,7 @@ export class TerralClimateCard extends LitElement {
 
   private _icon(e: HassEntity, size: number) {
     return html`<button class="icon" aria-label=${isOff(e) ? t(this.hass, "turn_on") : t(this.hass, "turn_off")} ?disabled=${isUnavailable(e)} @click=${this._power}>
-      ${modeIcon(isOff(e) ? "off" : e.state, size)}<span class="ring" style="--p:${this._pct(e)}"></span>
+      ${modeIcon(isOff(e) ? "off" : e.state, size)}
     </button>`;
   }
 
