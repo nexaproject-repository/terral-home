@@ -4,7 +4,7 @@
 import { html, nothing, svg, type TemplateResult } from "lit";
 import type { HomeAssistant } from "../ha-types";
 import { SWITCH_COLORS, switchIcon } from "../switch/switch-look";
-import { type Item, type Live, fmt1 } from "./energy-model";
+import { type Item, type Live, fmt1, fmtP } from "./energy-model";
 
 // ---- Icons and colours ------------------------------------------------------------
 
@@ -91,7 +91,7 @@ function barRow(h: HomeAssistant, x: Item, total: number, scaleKw: number, small
   return html`<div class="lb">
     <span class="ci" style="background:${hexOf(x.color)}">${energyIcon(x.icon, small ? 15 : 18)}</span>
     <div class="lbt">
-      <div class="lbn"><span>${x.name}</span><b>${fmt1(h, x.kw)} kW${pctOn && total > 0 ? html`<small> · ${Math.round((x.kw / total) * 100)} %</small>` : nothing}</b></div>
+      <div class="lbn"><span>${x.name}</span><b>${fmtP(h, x)}${pctOn && total > 0 ? html`<small> · ${Math.round((x.kw / total) * 100)} %</small>` : nothing}</b></div>
       <div class="trk"><i class=${on && x.kw > 0.01 ? "mv" : ""} style="width:${w}%;--c:${hexOf(x.color)};animation-duration:${pace(x.kw).toFixed(2)}s"></i></div>
     </div>
   </div>`;
@@ -148,7 +148,7 @@ export function view42(a: ViewArgs): TemplateResult {
         <text x="100" y="126" text-anchor="middle" class="t2">${a.labels.kwNow}</text>
         ${rows.map((x, i) => svg`<circle cx="212" cy=${y0 + i * step} r="15" fill=${hexOf(x.color)}></circle>${icoAt(x.icon, 212, y0 + i * step, 18)}
           <text x="236" y=${y0 + i * step - 5} class="t1">${short(x.name)}</text>
-          <text x="236" y=${y0 + i * step + 13} class="t2">${fmt1(h, x.kw)} kW${live.total > 0 ? ` · ${Math.round((x.kw / live.total) * 100)} %` : ""}</text>`)}
+          <text x="236" y=${y0 + i * step + 13} class="t2">${fmtP(h, x)}${live.total > 0 ? ` · ${Math.round((x.kw / live.total) * 100)} %` : ""}</text>`)}
       </svg>${stack(a)}`;
   }
   // flow
@@ -165,7 +165,7 @@ export function view42(a: ViewArgs): TemplateResult {
       <text x="194" y="24" class="t1">${a.labels.grid}</text><text x="194" y="41" class="t2">${fmt1(h, live.total)} kW</text>
       ${xs.map((x, i) => svg`<circle cx=${x} cy=${bot} r=${r} fill=${hexOf(items[i].color)}></circle>${icoAt(items[i].icon, x, bot, r)}
         <text x=${x} y=${bot + 42} class="t1 ${n > 4 ? "sm" : ""}" text-anchor="middle">${short(items[i].name)}</text>
-        <text x=${x} y=${bot + 59} class="t2" text-anchor="middle">${fmt1(h, items[i].kw)} kW${n <= 3 && live.total > 0 ? ` · ${Math.round((items[i].kw / live.total) * 100)} %` : ""}</text>`)}
+        <text x=${x} y=${bot + 59} class="t2" text-anchor="middle">${fmtP(h, items[i])}${n <= 3 && live.total > 0 ? ` · ${Math.round((items[i].kw / live.total) * 100)} %` : ""}</text>`)}
     </svg>${stack(a)}`;
 }
 
@@ -184,7 +184,7 @@ export function view22(a: ViewArgs): TemplateResult {
       <text x="58" y="62" text-anchor="middle" class="mid">${fmt1(h, live.total)}</text>
       <text x="58" y="78" text-anchor="middle" class="t2 xs">kW</text>
       ${items.map((x, i) => svg`<circle cx="140" cy=${y0 + i * step} r="12" fill=${hexOf(x.color)}></circle>${icoAt(x.icon, 140, y0 + i * step, 15)}
-        <text x="160" y=${y0 + i * step + 5} class="t1 sm">${short(x.name)}</text><text x="320" y=${y0 + i * step + 5} class="t1 sm" text-anchor="end">${fmt1(h, x.kw)} kW</text>`)}
+        <text x="160" y=${y0 + i * step + 5} class="t1 sm">${short(x.name)}</text><text x="320" y=${y0 + i * step + 5} class="t1 sm" text-anchor="end">${fmtP(h, x)}</text>`)}
     </svg>`;
   }
   const n = items.length;
@@ -196,7 +196,7 @@ export function view22(a: ViewArgs): TemplateResult {
       ${paths.map((d, i) => dots(d, hexOf(items[i].color), items[i].kw, 3, animate))}
       <circle cx="24" cy="44" r="22" fill="rgba(255,255,255,.16)" stroke="rgba(255,255,255,.35)"></circle>${icoAt("tower", 24, 44, 22)}
       ${ys.map((y, i) => svg`<circle cx="150" cy=${y} r="13" fill=${hexOf(items[i].color)}></circle>${icoAt(items[i].icon, 150, y, 16)}
-        <text x="171" y=${y + 5} class="t1 sm">${short(items[i].name)}</text><text x="320" y=${y + 5} class="t1 sm" text-anchor="end">${fmt1(h, items[i].kw)} kW</text>`)}
+        <text x="171" y=${y + 5} class="t1 sm">${short(items[i].name)}</text><text x="320" y=${y + 5} class="t1 sm" text-anchor="end">${fmtP(h, items[i])}</text>`)}
     </svg>`;
 }
 

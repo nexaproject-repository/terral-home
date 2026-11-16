@@ -2,6 +2,9 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.16.1 — 2026-11-16
+- Home consumption: a consumer under 1 kW shows its watts (80 W instead of 0,0 kW), and a sensor without data shows a dash instead of 0.
+
 ## 0.16.0 — 2026-11-16
 - **Home consumption card** (`terral-home-energy`): the main meter split into the consumers you choose and "rest of the house". Sizes 1/1, 2/1, 2/2 and 4/2.
 - Three views chosen in its settings — **flow** (dots from the grid to each consumer), **ring** (a band of light running along each segment) and **bars** (running stripes) — with movement faster the more each one uses; it can be turned off.

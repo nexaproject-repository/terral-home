@@ -39,6 +39,8 @@ export interface Item {
   kw: number;
   entity?: string;
   rest?: boolean;
+  /** The sensor is unavailable / unknown: shown as "—", not as 0. */
+  missing?: boolean;
 }
 
 export interface Live {
@@ -84,6 +86,7 @@ export function live(h: HomeAssistant, c: EnergyConfig, restName: string): Live 
       color: x.color ?? CONSUMER_COLORS[i % CONSUMER_COLORS.length],
       kw: Math.max(0, kwOf(h, x.entity) ?? 0),
       entity: x.entity,
+      missing: kwOf(h, x.entity) == null,
     };
   });
   const sum = items.reduce((a, x) => a + x.kw, 0);
@@ -225,6 +228,10 @@ export function todayEnergy(h: HomeAssistant, c: EnergyConfig): Promise<EnergyUs
   p.catch(() => cache.delete(key));
   return p;
 }
+
+/** Power of an item: watts under 1 kW (so 80 W doesn't read as 0,0 kW), "—" without data. */
+export const fmtP = (h: HomeAssistant | undefined, x: { kw: number; missing?: boolean }) =>
+  x.missing ? "—" : x.kw < 1 ? `${Math.round(x.kw * 1000).toLocaleString(h?.locale?.language ?? undefined)} W` : `${fmt1(h, x.kw)} kW`;
 
 export const fmt1 = (h: HomeAssistant | undefined, n: number) =>
   n.toLocaleString(h?.locale?.language ?? h?.language ?? undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });

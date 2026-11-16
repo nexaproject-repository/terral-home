@@ -7,7 +7,7 @@ import type { HomeAssistant } from "../ha-types";
 import { t } from "../i18n";
 import { gearIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
-import { type EnergyConfig, type EnergyUsage, fmt1, live, loadEnergy } from "./energy-model";
+import { type EnergyConfig, type EnergyUsage, fmt1, fmtP, live, loadEnergy } from "./energy-model";
 import { energyStyles } from "./energy-style";
 import { energyIcon, hexOf, view22 } from "./energy-views";
 
@@ -90,7 +90,7 @@ export class TerralEnergyDialog extends TerralSheet {
               const p = u && u.todayTotal > 0 ? Math.round((kwh / u.todayTotal) * 100) : 0;
               return html`<div class="row">
                 <span class="ci" style="background:${hexOf(x.color)}">${energyIcon(x.icon, 18)}</span>
-                <span class="nm">${x.name}<small>${fmt1(h, x.kw)} kW ${t(h, "en_now_l")}</small><span class="bar"><i style="width:${p}%;background:${hexOf(x.color)}"></i></span></span>
+                <span class="nm">${x.name}<small>${fmtP(h, x)} ${t(h, "en_now_l")}</small><span class="bar"><i style="width:${p}%;background:${hexOf(x.color)}"></i></span></span>
                 <span class="v">${u ? `${fmt1(h, kwh)} kWh` : "…"}<small>${u ? `${p} %` : ""}</small></span>
               </div>`;
             })}
