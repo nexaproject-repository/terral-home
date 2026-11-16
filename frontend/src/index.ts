@@ -3,6 +3,7 @@
 import "./light/terral-light-card";
 import "./alarm/terral-alarm-card";
 import "./charger/terral-charger-card";
+import "./climate/terral-climate-card";
 import "./panel/terral-home-panel";
 import type { HomeAssistant } from "./ha-types";
 
@@ -50,6 +51,16 @@ if (!w.customCards.some((c) => c.type === "terral-home-charger")) {
     type: "terral-home-charger",
     name: "Terral · Cargador",
     description: "Cargador de coche eléctrico al estilo Terral Home / Terral Home EV charger",
+    preview: true,
+    documentationURL: "https://github.com/nexaproject-repository/terral-home",
+  });
+}
+
+if (!w.customCards.some((c) => c.type === "terral-home-climate")) {
+  w.customCards.push({
+    type: "terral-home-climate",
+    name: "Terral · Clima",
+    description: "Aire acondicionado, calefacción o bomba de calor al estilo Terral Home / Terral Home climate",
     preview: true,
     documentationURL: "https://github.com/nexaproject-repository/terral-home",
   });

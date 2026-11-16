@@ -22,8 +22,12 @@ import {
   siblings,
 } from "../charger/charger-model";
 import { openConfirmSheet } from "./terral-confirm-sheet";
+import { type ClimateConfig, fanModes, limits, modeName, modes as climateModes, rules as climateRules, swingSupported } from "../climate/climate-model";
+import { modeIcon as climateIcon } from "../climate/climate-look";
+import { lang } from "../i18n";
+import { stepMinusIcon, stepPlusIcon, thermoIcon } from "../shared/icons";
 
-export type CardType = "light" | "alarm" | "charger";
+export type CardType = "light" | "alarm" | "charger" | "climate";
 export interface CardDraft {
   type: CardType;
   config: Record<string, any>;
@@ -37,8 +41,8 @@ export interface CardConfigOptions {
   onRemove?: () => void;
 }
 
-const TAGS: Record<CardType, string> = { light: "terral-home-light", alarm: "terral-home-alarm", charger: "terral-home-charger" };
-const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger" };
+const TAGS: Record<CardType, string> = { light: "terral-home-light", alarm: "terral-home-alarm", charger: "terral-home-charger", climate: "terral-home-climate" };
+const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate" };
 const SIZE_LABEL = (w: number, h: number) => (h === 4 ? "4/2" : h === 1 ? "1/1" : w === 2 ? "2/2" : "2/1");
 
 type Sub = "device" | "entity" | "alarm" | "lock" | "status_entity" | "power_entity" | "energy_entity";
@@ -56,6 +60,7 @@ export class TerralCardConfig extends TerralSheet {
   private _preview?: HTMLElement & { hass?: HomeAssistant; setConfig(c: unknown): void; getTerralSizes?: () => { w: number; h: number }[] };
 
   protected get heading() {
+    if (this._sub === "entity" && this.draft.type === "climate") return t(this.hass, "climate_entity");
     if (this._sub) return t(this.hass, ({ device: "ch_device", entity: "light_entity", alarm: "type_alarm", lock: "ch_lock_entity", status_entity: "ch_status", power_entity: "ch_power", energy_entity: "ch_energy" } as const)[this._sub]);
     return this.options.mode === "edit" ? t(this.hass, "settings") : t(this.hass, TYPE_LABEL[this.draft.type]);
   }
@@ -190,6 +195,8 @@ export class TerralCardConfig extends TerralSheet {
           </button>
         </div>
       </section>`;
+    } else if (type === "climate" && c.entity && h.states[c.entity]) {
+      specific = this._climateSettings(devId);
     } else if (type === "charger" && c.entity) {
       const lockish = isLockDomain(c.entity);
       const a = t(h, lockish ? "raw_locked" : "raw_on");
@@ -250,6 +257,77 @@ export class TerralCardConfig extends TerralSheet {
     `;
   }
 
+  private _climateSettings(devId?: string) {
+    const h = this.hass;
+    const c = this.draft.config as ClimateConfig & Record<string, any>;
+    const e = h.states[c.entity];
+    const l = lang(h);
+    const lim = limits(e, c);
+    const fmt = (n: number) => n.toLocaleString(h.locale?.language ?? h.language ?? undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const ents = devId ? this._entitiesOf(devId, (id) => id.startsWith("climate.")) : [];
+    const ms = climateModes(e);
+    const hasFan = fanModes(e).length > 0;
+    const canSwing = swingSupported(e);
+    const setRule = (m: string, k: "t" | "f") => {
+      const cur = climateRules(c, m);
+      this._set({ mode_rules: { ...(c.mode_rules ?? {}), [m]: { ...cur, [k]: !cur[k] } } });
+    };
+    const bump = (k: "min_temp" | "max_temp", dir: 1 | -1) => {
+      const cur = k === "min_temp" ? lim.min : lim.max;
+      let v = Math.round((cur + dir * lim.step) / lim.step) * lim.step;
+      v = k === "min_temp" ? Math.max(lim.hwMin, Math.min(lim.max - lim.step, v)) : Math.min(lim.hwMax, Math.max(lim.min + lim.step, v));
+      const hw = k === "min_temp" ? lim.hwMin : lim.hwMax;
+      this._set({ [k]: v === hw ? undefined : v });
+    };
+    const stepper = (k: "min_temp" | "max_temp") => html`<span class="mini">
+      <button aria-label="−" @click=${() => bump(k, -1)}>${stepMinusIcon(16)}</button>
+      <b>${fmt(k === "min_temp" ? lim.min : lim.max)}°</b>
+      <button aria-label="+" @click=${() => bump(k, 1)}>${stepPlusIcon(16)}</button>
+    </span>`;
+    return html`
+      ${ents.length > 1
+        ? html`<section><h3>${t(h, "climate_entity")}</h3><div class="list">${this._row(t(h, "climate_entity"), this._entName(c.entity), "entity", c.entity)}</div></section>`
+        : nothing}
+      <section>
+        <h3>${t(h, "temperature")}</h3>
+        <div class="list">
+          <div class="li"><span class="nm">${t(h, "min_temp_l")}<small>${t(h, "hw_min", { v: fmt(lim.hwMin) })}</small></span>${stepper("min_temp")}</div>
+          <div class="li"><span class="nm">${t(h, "max_temp_l")}<small>${t(h, "hw_max", { v: fmt(lim.hwMax) })}</small></span>${stepper("max_temp")}</div>
+          <div class="li"><span class="nm">${t(h, "temp_step_l")}</span>
+            <span class="seg">${[0.5, 1].map((v) => html`<button class=${lim.step === v ? "sel" : ""} @click=${() => this._set({ temp_step: v })}>${fmt(v)}°</button>`)}</span>
+          </div>
+        </div>
+      </section>
+      ${ms.length
+        ? html`<section>
+            <h3>${t(h, "per_mode")}</h3>
+            <div class="list">
+              <table class="matrix">
+                <tr><th>${t(h, "climate_mode")}</th><th>${t(h, "col_temp")}</th>${hasFan ? html`<th>${t(h, "col_fan")}</th>` : nothing}</tr>
+                ${ms.map((m) => {
+                  const r = climateRules(c, m);
+                  return html`<tr>
+                    <td><span class="mname">${climateIcon(m, 18)}${modeName(l, m)}</span></td>
+                    <td><button class="ck ${r.t ? "on" : ""}" role="checkbox" aria-checked=${r.t} @click=${() => setRule(m, "t")}>${r.t ? checkIcon(15) : nothing}</button></td>
+                    ${hasFan ? html`<td><button class="ck ${r.f ? "on" : ""}" role="checkbox" aria-checked=${r.f} @click=${() => setRule(m, "f")}>${r.f ? checkIcon(15) : nothing}</button></td>` : nothing}
+                  </tr>`;
+                })}
+              </table>
+            </div>
+            ${c.mode_rules ? html`<button class="more" style="margin-top:8px" @click=${() => this._set({ mode_rules: undefined })}>${t(h, "reset_rules")}</button>` : nothing}
+          </section>`
+        : nothing}
+      <section>
+        <h3>${t(h, "window_section")}</h3>
+        <div class="list">
+          <button class="li" role="switch" aria-checked=${!!c.show_swing && canSwing} ?disabled=${!canSwing} style=${canSwing ? "" : "opacity:.5"} @click=${() => this._set({ show_swing: !c.show_swing || undefined })}>
+            <span class="nm">${t(h, "show_swing")}<small>${t(h, canSwing ? "show_swing_sub" : "no_swing")}</small></span>
+            <span class="tog ${c.show_swing && canSwing ? "on" : ""}"></span>
+          </button>
+        </div>
+      </section>`;
+  }
+
   // ---- Sub pages ---------------------------------------------------------------
 
   private _opt(label: string, small: string | undefined, selected: boolean, onPick: () => void, icon?: unknown) {
@@ -299,6 +377,17 @@ export class TerralCardConfig extends TerralSheet {
             this._set({ device: x.d.id, entity: x.lights[0], name: this._devName(x.d) }), bulbIcon(false, 20)))}
         ${this._group(t(h, "other_lights"), others.map((id) => this._opt(this._entName(id), id, c.entity === id, () => pickEntity(id), bulbIcon(false, 20))))}`;
     }
+    if (type === "climate") {
+      const devs = this._devices
+        .map((d) => ({ d, ents: this._entitiesOf(d.id, (id) => id.startsWith("climate.")) }))
+        .filter((x) => x.ents.length && this._match(this._devName(x.d), ...x.ents.map(this._entName)))
+        .sort((a, b) => this._devName(a.d).localeCompare(this._devName(b.d)));
+      const loose = Object.keys(h.states).filter((id) => id.startsWith("climate.") && this._visible(id) && !this._deviceOf(id) && this._match(this._entName(id), id));
+      return html`${this._search()}
+        ${this._byArea(devs, (x) => x.d.area_id, (x) =>
+          this._opt(this._devName(x.d), x.d.model ?? undefined, cur === x.d.id, () => this._set({ device: x.d.id, entity: x.ents[0], name: this._devName(x.d) }), thermoIcon(20)))}
+        ${this._group(t(h, "other_climates"), loose.map((id) => this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id, device: undefined, name: this._entName(id) }), thermoIcon(20))))}`;
+    }
     // charger
     const devs = this._devices
       .map((d) => ({ d, locks: this._entitiesOf(d.id, (id) => LOCK_DOMAINS.includes(domainOf(id))) }))
@@ -336,7 +425,8 @@ export class TerralCardConfig extends TerralSheet {
     }
     const devId = c.device ?? this._deviceOf(c.entity);
     if (sub === "entity") {
-      const list = devId ? this._entitiesOf(devId, (id) => id.startsWith("light.")) : [];
+      const dom = this.draft.type === "climate" ? "climate." : "light.";
+      const list = devId ? this._entitiesOf(devId, (id) => id.startsWith(dom)) : [];
       return html`<div class="scroll">${this._group(t(h, "light_entity"), list.map((id) => this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id }))))}</div>`;
     }
     if (sub === "lock") {
@@ -610,6 +700,90 @@ export class TerralCardConfig extends TerralSheet {
         justify-content: center;
         flex: none;
       }
+      .mini {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 2px;
+      }
+      .mini button {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .mini b {
+        min-width: 52px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+        font-size: 15px;
+      }
+      .seg {
+        display: flex;
+        gap: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 3px;
+      }
+      .seg button {
+        height: 30px;
+        padding: 0 14px;
+        border-radius: 15px;
+        font-size: 14px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .seg button.sel {
+        background: #fff;
+        color: #23233a;
+      }
+      .matrix {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      .matrix th {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        padding: 10px 6px;
+        text-align: center;
+      }
+      .matrix th:first-child,
+      .matrix td:first-child {
+        text-align: left;
+        padding-left: 14px;
+      }
+      .matrix td {
+        padding: 8px 6px;
+        text-align: center;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .mname {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ck {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+      }
+      .ck.on {
+        background: #34c77b;
+        border-color: #34c77b;
+      }
       .more,
       .remove {
         width: 100%;
@@ -665,6 +839,7 @@ export function openCardSettings(card: HTMLElement, hass: HomeAssistant, type: C
 /** Default draft when a card type is picked in "Añadir tarjeta". */
 export function newDraft(type: CardType): CardDraft {
   return { type, config: {}, w: type === "light" ? 1 : 2, h: 2 };
+  // Climate starts as 2/2 too; the corner gives 4/2 with the big dial.
 }
 
 export function updateCardConfig(hass: HomeAssistant) {

@@ -16,9 +16,9 @@ const TYPES: { type: CardType; name: StringKey; desc: StringKey; icon: () => unk
   { type: "light", name: "type_light", desc: "type_light_desc", icon: () => bulbIcon(true, 20), color: "#ffb020" },
   { type: "alarm", name: "type_alarm", desc: "type_alarm_desc", icon: () => shieldIcon(20), color: "rgba(255,255,255,.18)" },
   { type: "charger", name: "ev_charger", desc: "type_charger_desc", icon: () => evChargerIcon(20), color: "#34c77b" },
+  { type: "climate", name: "type_climate", desc: "type_climate_desc", icon: () => thermoIcon(), color: "#4696ff" },
 ];
 const SOON: { name: StringKey; icon: () => unknown }[] = [
-  { name: "type_climate", icon: () => thermoIcon() },
   { name: "type_cover", icon: () => blindIcon() },
   { name: "type_sensor", icon: () => gaugeIcon() },
 ];
@@ -38,7 +38,11 @@ export class TerralAddSheet extends TerralSheet {
     const types = TYPES.filter((x) => match(x.name, x.desc));
     // A type with nothing to show in this house is greyed out with the reason.
     const missing = (type: CardType): StringKey | undefined =>
-      type === "alarm" && !Object.keys(this.hass.states).some((id) => id.startsWith("alarm_control_panel.")) ? "alarm_missing" : undefined;
+      type === "alarm" && !Object.keys(this.hass.states).some((id) => id.startsWith("alarm_control_panel."))
+        ? "alarm_missing"
+        : type === "climate" && !Object.keys(this.hass.states).some((id) => id.startsWith("climate."))
+          ? "climate_missing"
+          : undefined;
     const soon = SOON.filter((x) => match(x.name));
     return html`
       <label class="search">

@@ -133,3 +133,20 @@ export const batteryIcon = (size = 19) =>
   line(size, svg`<rect x="3" y="7" width="16" height="10" rx="2.5"></rect><path d="M21 11v2"></path><path d="M7 10.5v3M10.5 10.5v3"></path>`);
 export const clockIcon = (size = 19) => line(size, svg`<circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path>`);
 export const backIcon = (size = 20) => line(size, svg`<path d="M15 6l-6 6 6 6"></path>`, 2.4);
+
+// ---- Climate ----------------------------------------------------------------
+
+export const climateAutoIcon = (size = 22) => line(size, svg`<circle cx="12" cy="12" r="8.5"></circle><path d="M9 16l3-8 3 8M10 13.5h4"></path>`);
+export const coolIcon = (size = 22) =>
+  line(size, svg`<path d="M12 2v20M4.2 6.5l15.6 11M4.2 17.5l15.6-11"></path><path d="M9.5 4L12 6.5 14.5 4M9.5 20l2.5-2.5 2.5 2.5"></path>`);
+export const heatIcon = (size = 22) =>
+  line(size, svg`<path d="M12 22a7 7 0 0 0 7-7c0-4-3-6.5-4-10-2 2-3 4-3 6-1-1-2-2-2.5-3.5C7.5 9.5 5 12 5 15a7 7 0 0 0 7 7z"></path>`);
+export const dryIcon = (size = 22) =>
+  line(size, svg`<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"></path><path d="M9.5 15.5l5-5"></path>`);
+export const fanIcon = (size = 22) =>
+  line(size, svg`<circle cx="12" cy="12" r="1.8"></circle><path d="M12 10.2C11 6 13 3 15.5 4.2S15 9 12 10.2zM13.8 12c4.2-1 7.2 1 6 3.5S15 15 13.8 12zM12 13.8c1 4.2-1 7.2-3.5 6S9 15 12 13.8zM10.2 12c-4.2 1-7.2-1-6-3.5S9 9 10.2 12z"></path>`);
+export const heatCoolIcon = (size = 22) =>
+  line(size, svg`<path d="M8 20V4M4.5 7.5L8 4l3.5 3.5"></path><path d="M16 4v16M12.5 16.5L16 20l3.5-3.5"></path>`);
+export const thermoIcon = (size = 22) => line(size, svg`<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"></path>`);
+export const stepMinusIcon = (size = 20) => line(size, svg`<path d="M6 12h12"></path>`, 2.4);
+export const stepPlusIcon = (size = 20) => line(size, svg`<path d="M12 6v12M6 12h12"></path>`, 2.4);
