@@ -2,6 +2,10 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.12.0 — 2026-11-16
+- **Section quick actions**: round buttons on the right of a section title. Lights (on by default): amber with how many are on; a tap turns them all off, or all on. Climate (opt-in): the same for the section's climate devices. Hidden in move mode.
+- **Section settings** from a gear on the title in move mode: name, quick actions and remove section.
+
 ## 0.11.0 — 2026-11-16
 - **Same card size on phone, tablet and PC.** Columns keep a phone-like width; every section is 2 columns wide and wider screens show several sections side by side, each in the shortest column, instead of stretching the cards.
 - Move mode: sections can be dragged to another column.

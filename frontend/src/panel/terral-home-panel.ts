@@ -19,7 +19,9 @@ import { repeat } from "lit/directives/repeat.js";
 import { fireEvent, type HomeAssistant } from "../ha-types";
 import { t } from "../i18n";
 import { areaOf, isGroup } from "../light/light-model";
-import { dotsIcon, linesIcon, menuIcon, minusIcon, plusIcon } from "../shared/icons";
+import { bulbIcon, dotsIcon, gearIcon, linesIcon, menuIcon, minusIcon, plusIcon, thermoIcon } from "../shared/icons";
+import { DEFAULT_QUICK, quickOf, quickState, runQuick } from "./quick-actions";
+import { openSectionSheet } from "./terral-section-sheet";
 import { backgroundCss } from "../shared/backgrounds";
 import { openAddSheet } from "./terral-add-sheet";
 import { newDraft, openCardConfig, updateCardConfig } from "./terral-card-config";
@@ -887,6 +889,9 @@ export class TerralHomePanel extends LitElement {
             ? html`<button class="title" aria-label=${t(this.hass, "rename_section")} @click=${() => (this._renaming = s.id)}>${s.title}</button>`
             : html`<h2>${s.title}</h2>`}
         ${edit
+          ? html`<button class="sgear" aria-label=${t(this.hass, "section_settings")} @click=${() => this._sectionSettings(s)}>${gearIcon(18)}</button>`
+          : this._quickButtons(s)}
+        ${edit
           ? html`<button
               class="handle"
               aria-label=${t(this.hass, "move_section")}
@@ -896,6 +901,42 @@ export class TerralHomePanel extends LitElement {
       </header>
       ${this._grid(s.id, s.cards, edit, false, edit && !s.cards.length ? t(this.hass, "drop_here") : undefined)}
     </section>`;
+  }
+
+  /** Quick actions on the right of a section title (hidden in move mode). */
+  private _quickButtons(s: TerralSection) {
+    const h = this.hass;
+    if (!h) return nothing;
+    const btns = quickOf(s)
+      .map((k) => ({ k, ...quickState(h, k, s.cards) }))
+      .filter((q) => q.ids.length);
+    if (!btns.length) return nothing;
+    return html`<div class="quick">
+      ${btns.map(
+        (q) => html`<button
+          class="qb ${q.on ? "on" : ""} ${q.k}"
+          aria-label=${t(h, q.k === "lights" ? (q.on ? "quick_lights_off" : "quick_lights_on") : q.on ? "quick_climate_off" : "quick_climate_on")}
+          @click=${() => runQuick(h, q.k, s.cards)}
+        >${q.k === "lights" ? bulbIcon(q.on > 0, 21) : thermoIcon(20)}${q.on ? html`<span class="n">${q.on}</span>` : nothing}</button>`,
+      )}
+    </div>`;
+  }
+
+  private _sectionSettings(s: TerralSection) {
+    if (!this.hass) return;
+    openSectionSheet(
+      this.hass,
+      s,
+      ({ title, quick }) =>
+        this._update((l) => {
+          const sec = l.sections.find((x) => x.id === s.id);
+          if (!sec) return;
+          sec.title = title;
+          if (quick.length === DEFAULT_QUICK.length && quick.every((k) => DEFAULT_QUICK.includes(k))) delete sec.quick;
+          else sec.quick = quick;
+        }),
+      () => this._removeSection(s.id),
+    );
   }
 
   private _grid(key: ListKey, cards: TerralCard[], edit: boolean, addTile: boolean, placeholder?: string) {
@@ -1268,6 +1309,71 @@ export class TerralHomePanel extends LitElement {
       font-weight: 700;
       padding: 0 10px;
       outline: none;
+      box-sizing: border-box;
+    }
+    /* Section quick actions (lights, climate) and the move-mode gear. */
+    .quick {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: none;
+    }
+    .qb {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      position: relative;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.13);
+      -webkit-backdrop-filter: blur(24px) saturate(170%);
+      backdrop-filter: blur(24px) saturate(170%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      transition: background 0.2s;
+    }
+    .qb.lights.on {
+      background: #ffb020;
+      border-color: rgba(255, 255, 255, 0.7);
+      box-shadow: none;
+    }
+    .qb.climate.on {
+      background: #4696ff;
+      border-color: rgba(255, 255, 255, 0.7);
+      box-shadow: none;
+    }
+    .qb .n {
+      position: absolute;
+      right: -4px;
+      top: -4px;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      padding: 0 5px;
+      box-sizing: border-box;
+      background: #fff;
+      color: #2a2a3a;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+    .sgear {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.22);
       box-sizing: border-box;
     }
     .sdel {

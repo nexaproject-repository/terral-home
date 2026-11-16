@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.11.0). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.12.0). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -31,6 +31,7 @@ Terral Home gives Home Assistant a clean, glass-style home screen inspired by mo
 - **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum), then choose the device and name.
 - **Arrange by touch**: long-press a card to move it, drag the bottom-right corner to resize, remove with **−**.
 - **Sections** with titles; move a whole section at once, or create one per Home Assistant area.
+- **Quick actions** on the right of each section title: turn every light of the section on or off (and, if you enable it, every climate device).
 - **A window for every card** with all its controls, and a **gear** for the card settings.
 - **One shared layout** for the whole household, stored by the integration.
 - Spanish and English.
@@ -60,6 +61,7 @@ To update: HACS → Terral Home → **Redownload**, restart Home Assistant, then
 | Resize | In move mode, drag the arc at the bottom-right corner |
 | Remove | In move mode, **−** on the card |
 | Sections | In move mode: **Add section**, tap a title to rename it, drag its three lines to move the block, **−** removes it (you choose whether its cards stay) |
+| Section quick actions | Round buttons on the right of a section title. Lights: amber with how many are on; a tap turns them all off, or all on when every light is off. In move mode, the gear on the title opens the section settings: name, which quick actions show (lights, climate) and **Remove section** |
 | Sections per room | **···** → **Create sections by room** |
 | Finish | **Done** |
 
@@ -222,6 +224,7 @@ Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto crista
 - **Robot aspirador** (Roborock u otros): en espera, la 2/2 muestra tus 3 rutinas principales (se eligen en los ajustes) y el icono abre todas; limpiando, el icono pausa y se ve el progreso; atascado, sale una **!** roja sobre el icono. La batería va en el texto. En la ventana: aspirar / fregar / ambos, potencia, agua, modo de mopa, habitaciones y rutinas; lo que no aplica se apaga.
 - **Ordenar**: pulsación larga en una tarjeta para entrar en modo mover; desliza para desplazarte y deja el dedo quieto un instante sobre una tarjeta para agarrarla. La esquina inferior derecha cambia el tamaño y **−** la quita.
 - **Mismo tamaño en móvil, tablet y PC**: cada apartado ocupa 2 columnas y en pantallas anchas se ponen varios apartados uno al lado de otro (cada uno en la columna más corta).
+- **Accesos rápidos** a la derecha del título de cada apartado: encienden o apagan todas sus luces (y, si lo activas, el clima). Se configuran con el engranaje del apartado en modo mover.
 - **Apartados**: en modo mover, **Añadir apartado**; toca el título para renombrarlo y arrastra las tres líneas para moverlo entero. También puedes crearlos por habitación desde **···**.
 - **Ajustes de cada tarjeta**: engranaje en su ventana.
 - **Actualizar**: HACS → **Volver a descargar**, reiniciar Home Assistant y cerrar y abrir la app.

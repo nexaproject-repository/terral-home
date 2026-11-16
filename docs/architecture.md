@@ -47,7 +47,7 @@ One layout for the whole household, stored with `homeassistant.helpers.storage.S
       "name": "Sofa", "use_light_color": false }      // extra keys = card settings
   ],
   "sections": [
-    { "id": "s1", "title": "Kitchen", "cards": [ /* same card objects */ ] }
+    { "id": "s1", "title": "Kitchen", "quick": ["lights", "climate"], "cards": [ /* same card objects */ ] }
   ]
 }
 ```
@@ -79,6 +79,7 @@ Built with Lit 3 and Vite into a single ES module. `npm run build` runs `tsc --n
 - **Lanes (option A)**: `_rowsOf()` simulates the grid's `row dense` packing to know each block's height, and `_assignLanes()` puts each block, in order, in the shortest lane, so there are no gaps. Dragging a section picks the lane under the finger and the position by the sections' middles (`_hitSection`), shows a line there and moves the section in the list; the lanes are then recomputed.
 - Creates the card elements itself (`CARD_TAGS`) and passes `hass` and a config with `view_layout.terral = { w, h }`.
 - **Move mode**: entered with a long press on a card (`terral-card-hold`) or from the ··· menu. Cards jiggle; with a finger, a card is picked up after resting ~0.3 s on it (swiping scrolls), with the mouse at once. The corner arc resizes, snapping to the sizes the card offers; **−** removes. Sections have a title (tap to rename), a three-line handle and **−**.
+- **Section quick actions** (`panel/quick-actions.ts`): round buttons on the right of a section title, hidden in move mode. A section stores the ones it shows in `quick` (a list of `"lights"`, `"climate"`); without it, `["lights"]`. Lights count the section's light cards with group members expanded; a tap turns them all off when any is on, otherwise all on (`light.turn_off` / `turn_on` with every id). Climate does the same with the climate cards (on = not `off`, turning on uses each unit's last mode). In move mode a gear on the title opens `panel/terral-section-sheet.ts` (name, quick actions, remove section).
 - **Edges**: while open it paints `html`/`body`, sets `meta[name=theme-color]` and the theme variables the Companion app reads (`--app-header-background-color`, `--primary-background-color`), then sends `theme-update` through the external bus. It saves and restores **only** those properties, because Home Assistant applies themes as inline styles on the same elements.
 - The background fades into the edge colour at the top and bottom so the phone bars and the page join without a seam.
 
