@@ -1456,13 +1456,20 @@ export class TerralHomePanel extends LitElement {
       box-shadow: none;
       border: 2px dashed rgba(255, 255, 255, 0.45);
       width: 36px;
+      min-width: 36px;
       padding: 0;
-      justify-content: center;
+      display: grid;
+      place-items: center;
       flex: none;
       box-sizing: border-box;
+      -webkit-appearance: none;
+      appearance: none;
+      text-indent: 0;
+      line-height: 0;
     }
     .pg.add svg {
       display: block;
+      margin: 0;
     }
     .pg.drop {
       outline: 2px dashed rgba(255, 255, 255, 0.95);

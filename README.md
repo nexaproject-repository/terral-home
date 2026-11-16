@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.15.2). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.15.3). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -145,7 +145,7 @@ How it reads Roborock: battery, progress, area, time, current room and error com
 For anything on a switch: a water heater, a bug zapper, a plug, a fan… (`switch`, `input_boolean`; `light` and `fan` entities also work from YAML).
 
 - **Sizes**: 1/1, 2/1 and 2/2. The **icon** switches it on and off; a tap anywhere else opens the window.
-- **Icon**: 15 to choose from in the settings (water heater, mosquito, bug-zapper lamp, plug, fan, coffee machine, radiator, heater, dehumidifier, pump, Christmas tree, router, washing machine, TV, water). Without a choice, it's guessed from the name ("Termo" → water heater).
+- **Icon**: 15 to choose from in the settings (water heater, crossed-out mosquito, bug-zapper lamp, plug, fan, coffee machine, radiator, heater, dehumidifier, pump, Christmas tree, router, washing machine, TV, water). Without a choice, it's guessed from the name ("Termo" → water heater).
 - **Colour when on**: 8 colours (amber, orange, red, pink, violet, blue, teal, green), strong on the icon and soft on the card background. Amber is the light card's look. Off, the card is glass like every other.
 - **2/2 view**, chosen in the settings:
   - **A · Data**: since when · power now · today (kWh, or time on without a meter).

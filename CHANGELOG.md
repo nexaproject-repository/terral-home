@@ -2,6 +2,10 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.15.3 — 2026-11-16
+- Pages: the round **+** is centred in its circle on every browser.
+- Switch card: the mosquito icon is now a simple mosquito crossed out (for bug zappers and repellents).
+
 ## 0.15.2 — 2026-11-16
 - Pages: in move mode, the button to add a page is now a round **+** (the "Página" label was drawn badly).
 
