@@ -218,6 +218,22 @@ export class TerralHomePanel extends LitElement {
       strip.dataset.watch = "1";
       strip.addEventListener("scroll", () => strip.classList.toggle("more", strip.scrollWidth - strip.scrollLeft - strip.clientWidth > 4), { passive: true });
     }
+    // Page pills: fade only the side(s) where more pills are hidden.
+    const pills = this.renderRoot.querySelector<HTMLElement>(".pills");
+    if (pills) {
+      const fade = () => {
+        const left = pills.scrollLeft > 4;
+        const right = pills.scrollWidth - pills.scrollLeft - pills.clientWidth > 4;
+        pills.style.setProperty("--l", left ? "40px" : "0px");
+        pills.style.setProperty("--r", right ? "56px" : "0px");
+      };
+      fade();
+      if (!pills.dataset.watch) {
+        pills.dataset.watch = "1";
+        pills.addEventListener("scroll", fade, { passive: true });
+        new ResizeObserver(fade).observe(pills);
+      }
+    }
     if (changed.has("_renaming") && this._renaming) {
       const input = this.renderRoot.querySelector<HTMLInputElement>("input.rename");
       input?.focus();
@@ -1410,6 +1426,11 @@ export class TerralHomePanel extends LitElement {
       padding: 4px 16px;
       overflow-x: auto;
       scrollbar-width: none;
+      /* --l / --r are set from the scroll position: a fade only where pills are hidden */
+      --l: 0px;
+      --r: 0px;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--l), #000 calc(100% - var(--r)), transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0, #000 var(--l), #000 calc(100% - var(--r)), transparent 100%);
     }
     .pills::-webkit-scrollbar {
       display: none;

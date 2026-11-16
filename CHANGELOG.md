@@ -2,6 +2,9 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.16.3 — 2026-11-16
+- Pages: when the pills don't fit, they fade out only on the side(s) where more are hidden (right at the start, both in the middle, left at the end) instead of being cut off.
+
 ## 0.16.2 — 2026-11-16
 - Home consumption: the main meter and the consumers can also be **energy counters** (kWh, like a "total consumption" sensor); their power now is worked out from how fast they grow over the last minutes, and their history from the hourly growth.
 - The total never shows less than what the consumers add up to.

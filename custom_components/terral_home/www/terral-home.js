@@ -524,7 +524,7 @@ Ar?.({ LitElement: R });
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const D = (t) => (e, s) => {
+const E = (t) => (e, s) => {
   s !== void 0 ? s.addInitializer(() => {
     customElements.define(t, e);
   }) : customElements.define(t, e);
@@ -534,7 +534,7 @@ const D = (t) => (e, s) => {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Tr = { attribute: !0, type: String, converter: js, reflect: !1, hasChanged: hn }, Dr = (t = Tr, e, s) => {
+const Tr = { attribute: !0, type: String, converter: js, reflect: !1, hasChanged: hn }, Er = (t = Tr, e, s) => {
   const { kind: i, metadata: n } = s;
   let a = globalThis.litPropertyMetadata.get(n);
   if (a === void 0 && globalThis.litPropertyMetadata.set(n, a = /* @__PURE__ */ new Map()), i === "setter" && ((t = Object.create(t)).wrapped = !0), a.set(s.name, t), i === "accessor") {
@@ -556,7 +556,7 @@ const Tr = { attribute: !0, type: String, converter: js, reflect: !1, hasChanged
   throw Error("Unsupported decorator location: " + i);
 };
 function $(t) {
-  return (e, s) => typeof s == "object" ? Dr(t, e, s) : ((i, n, a) => {
+  return (e, s) => typeof s == "object" ? Er(t, e, s) : ((i, n, a) => {
     const o = n.hasOwnProperty(a);
     return n.constructor.createProperty(a, i), o ? Object.getOwnPropertyDescriptor(n, a) : void 0;
   })(t, e, s);
@@ -574,7 +574,7 @@ function v(t) {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Er = (t, e, s) => (s.configurable = !0, s.enumerable = !0, Reflect.decorate && typeof e != "object" && Object.defineProperty(t, e, s), s);
+const Dr = (t, e, s) => (s.configurable = !0, s.enumerable = !0, Reflect.decorate && typeof e != "object" && Object.defineProperty(t, e, s), s);
 /**
  * @license
  * Copyright 2017 Google LLC
@@ -583,7 +583,7 @@ const Er = (t, e, s) => (s.configurable = !0, s.enumerable = !0, Reflect.decorat
 function Or(t, e) {
   return (s, i, n) => {
     const a = (o) => o.renderRoot?.querySelector(t) ?? null;
-    return Er(s, i, { get() {
+    return Dr(s, i, { get() {
       return a(this);
     } });
   };
@@ -1660,7 +1660,7 @@ ct([
   v()
 ], Z.prototype, "_drag", 2);
 Z = ct([
-  D("terral-slider")
+  E("terral-slider")
 ], Z);
 const Ka = ["hs", "rgb", "rgbw", "rgbww", "xy"], bn = [
   { name: { es: "Rosa", en: "Pink" }, rgb: [232, 80, 138] },
@@ -1778,7 +1778,7 @@ function Wi(t, e) {
   }
   return s && s.d < 9e3 ? s.n : void 0;
 }
-function Ds(t, e) {
+function Es(t, e) {
   const s = t.entities?.[e], i = s?.area_id ?? (s?.device_id ? t.devices?.[s.device_id]?.area_id : void 0);
   return i ? t.areas?.[i]?.name ?? void 0 : void 0;
 }
@@ -1895,7 +1895,7 @@ let st = class extends R {
           </button>
           <div class="title">
             <strong>${this._name(t)}</strong>
-            <span>${this._stateText(t)}${Ds(this.hass, t.entity_id) ? ` · ${Ds(this.hass, t.entity_id)}` : ""}</span>
+            <span>${this._stateText(t)}${Es(this.hass, t.entity_id) ? ` · ${Es(this.hass, t.entity_id)}` : ""}</span>
           </div>
           ${this.opts.onSettings ? d`<button class="round gear" aria-label=${r(this.hass, "settings")} @click=${() => {
       const c = this.opts.onSettings;
@@ -1981,7 +1981,7 @@ let st = class extends R {
   _memberList(t, e) {
     const s = this.opts.groupByArea ?? "auto", i = /* @__PURE__ */ new Map();
     for (const c of e) {
-      const h = Ds(this.hass, c) ?? r(this.hass, "other_area");
+      const h = Es(this.hass, c) ?? r(this.hass, "other_area");
       i.set(h, [...i.get(h) ?? [], c]);
     }
     const n = s === "always" || s === "auto" && e.length > 8 && i.size > 1, a = e.length > 8 ? d`<div class="chips">
@@ -2487,7 +2487,7 @@ _t([
   Or("input[type=color]")
 ], st.prototype, "_picker", 2);
 st = _t([
-  D("terral-light-dialog")
+  E("terral-light-dialog")
 ], st);
 var xl = Object.defineProperty, xn = (t, e, s, i) => {
   for (var n = void 0, a = t.length - 1, o; a >= 0; a--)
@@ -2881,7 +2881,7 @@ no([
   $({ attribute: !1 })
 ], Is.prototype, "options", 2);
 Is = no([
-  D("terral-confirm-sheet")
+  E("terral-confirm-sheet")
 ], Is);
 function os(t, e) {
   const s = document.createElement("terral-confirm-sheet");
@@ -2971,14 +2971,14 @@ const uo = {
   sleep: "Noche",
   boost: "Turbo",
   activity: "Actividad"
-}, Dl = {
+}, El = {
   auto: "Auto",
   heat_cool: "Heat/cool",
   cool: "Cool",
   heat: "Heat",
   dry: "Dry",
   fan_only: "Fan only"
-}, El = { cool: "Enfriando", heat: "Calentando", dry: "Deshumidificando", fan_only: "Ventilando", auto: "Automático", heat_cool: "Manteniendo" }, Ol = { cool: "Cooling", heat: "Heating", dry: "Drying", fan_only: "Fan", auto: "Auto", heat_cool: "Keeping" }, go = (t) => t.charAt(0).toUpperCase() + t.slice(1).replace(/_/g, " "), lt = (t, e) => (t === "es" ? uo[e] : Dl[e]) ?? go(e), Ui = (t, e) => (t === "es" ? uo[e.toLowerCase()] : void 0) ?? go(e), Fi = (t, e) => (t === "es" ? El[e] : Ol[e]) ?? lt(t, e);
+}, Dl = { cool: "Enfriando", heat: "Calentando", dry: "Deshumidificando", fan_only: "Ventilando", auto: "Automático", heat_cool: "Manteniendo" }, Ol = { cool: "Cooling", heat: "Heating", dry: "Drying", fan_only: "Fan", auto: "Auto", heat_cool: "Keeping" }, go = (t) => t.charAt(0).toUpperCase() + t.slice(1).replace(/_/g, " "), lt = (t, e) => (t === "es" ? uo[e] : El[e]) ?? go(e), Ui = (t, e) => (t === "es" ? uo[e.toLowerCase()] : void 0) ?? go(e), Fi = (t, e) => (t === "es" ? Dl[e] : Ol[e]) ?? lt(t, e);
 function jl(t, e) {
   if (!e) return "";
   if (/auto/i.test(e)) return "A";
@@ -3123,16 +3123,16 @@ function Bl(t, e, s) {
     }).catch(() => (vs.delete(n), []))
   ), vs.get(n);
 }
-function Dn(t, e) {
+function En(t, e) {
   return _o(t, e).filter((s) => s.startsWith("button.") && !ds(t, s)?.entity_category && !ds(t, s)?.hidden);
 }
 function $o(t, e) {
-  const s = Dn(t, e.entity), i = (e.routines ?? []).filter((n) => !s.includes(n) && t.states[n]);
+  const s = En(t, e.entity), i = (e.routines ?? []).filter((n) => !s.includes(n) && t.states[n]);
   return [...s, ...i];
 }
 function ua(t, e) {
   const s = (e.routines ?? []).filter((i) => t.states[i]);
-  return (s.length ? s : Dn(t, e.entity)).slice(0, 3);
+  return (s.length ? s : En(t, e.entity)).slice(0, 3);
 }
 const Gi = (t, e) => e.startsWith("script.") ? t.callService("script", "turn_on", {}, { entity_id: e }) : t.callService("button", "press", {}, { entity_id: e });
 function Rs(t, e, s) {
@@ -3144,7 +3144,7 @@ function ko(t) {
   const e = t === "cleaning" || t === "paused" ? Vl : t === "returning" ? Gl : t === "error" ? Kl : null;
   return e ? `--bg:${We($s(e, [255, 255, 255], 0.86), 0.95)};--bg-solid:${We($s(e, [255, 255, 255], 0.86))};--fg:${We($s(e, [10, 10, 20], 0.8))};--fg2:${We($s(e, [20, 10, 30], 0.68))};--accent:${We(e)}` : "";
 }
-const En = (t) => t === "cleaning" || t === "paused" || t === "returning" || t === "error";
+const Dn = (t) => t === "cleaning" || t === "paused" || t === "returning" || t === "error";
 function Xl(t, e) {
   const s = t >= 80 ? 4 : t >= 60 ? 3 : t >= 40 ? 2 : t >= 20 ? 1 : 0, i = t < 20 ? e ? "#a32d2d" : "#ff9b93" : t < 40 ? e ? "#854f0b" : "#ffd27a" : e ? "#0f6e56" : "#9ff0d0";
   return { bars: s, color: i };
@@ -3152,7 +3152,7 @@ function Xl(t, e) {
 function Mo(t, e, s, i, n = 16) {
   const a = Nl(t, e, s);
   if (a == null) return null;
-  const o = Vt(e), { bars: l, color: c } = Xl(a, En(o)), h = o === "docked" && a < 100;
+  const o = Vt(e), { bars: l, color: c } = Xl(a, Dn(o)), h = o === "docked" && a < 100;
   return { pct: a, color: c, icon: ll(l, h, n), text: i ? `${a} %` : String(a) };
 }
 const Ql = {
@@ -3225,7 +3225,7 @@ function Co(t, e, s = !0) {
     o != null ? `${o} min` : ""
   ].filter(Boolean).join(" · ");
 }
-function Es(t, e, s, i = !1) {
+function Ds(t, e, s, i = !1) {
   const n = Vt(e), a = Hl(t, s);
   if (i && n === "cleaning") {
     const o = An(t, s);
@@ -3403,7 +3403,7 @@ function pt(t) {
   const e = Math.max(0, Math.round(t / 6e4)), s = Math.floor(e / 60), i = e % 60;
   return s ? i ? `${s} h ${i} min` : `${s} h` : `${i} min`;
 }
-const pe = (t, e) => new Date(e).toLocaleTimeString(t?.locale?.language ?? t?.language ?? void 0, { hour: "2-digit", minute: "2-digit" }), hc = "amber", yt = ["green", "blue", "violet", "red", "teal", "pink", "orange"], ye = (t, e) => String(t.states[e]?.attributes.unit_of_measurement ?? ""), Do = (t, e) => e.startsWith("sensor.") && ["W", "kW", "MW"].includes(ye(t, e)), Gt = (t, e) => e.startsWith("sensor.") && ["Wh", "kWh", "MWh"].includes(ye(t, e)), Eo = (t, e) => Do(t, e) || Gt(t, e), jn = (t) => t === "Wh" ? 1 / 1e3 : t === "MWh" ? 1e3 : 1, Us = /* @__PURE__ */ new Map(), Pn = 15 * 6e4;
+const pe = (t, e) => new Date(e).toLocaleTimeString(t?.locale?.language ?? t?.language ?? void 0, { hour: "2-digit", minute: "2-digit" }), hc = "amber", yt = ["green", "blue", "violet", "red", "teal", "pink", "orange"], ye = (t, e) => String(t.states[e]?.attributes.unit_of_measurement ?? ""), Eo = (t, e) => e.startsWith("sensor.") && ["W", "kW", "MW"].includes(ye(t, e)), Gt = (t, e) => e.startsWith("sensor.") && ["Wh", "kWh", "MWh"].includes(ye(t, e)), Do = (t, e) => Eo(t, e) || Gt(t, e), jn = (t) => t === "Wh" ? 1 / 1e3 : t === "MWh" ? 1e3 : 1, Us = /* @__PURE__ */ new Map(), Pn = 15 * 6e4;
 function Oo(t, e, s) {
   const i = Us.get(t) ?? [];
   i.some((a) => a.t === e) || (i.push({ t: e, v: s }), i.sort((a, o) => a.t - o.t));
@@ -3567,7 +3567,7 @@ function mc(t, e) {
 }
 const we = (t, e) => e.missing ? "—" : e.kw < 1 ? `${Math.round(e.kw * 1e3).toLocaleString(t?.locale?.language ?? void 0)} W` : `${W(t, e.kw)} kW`, W = (t, e) => e.toLocaleString(t?.locale?.language ?? t?.language ?? void 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 function _c(t) {
-  const e = [...Object.keys(t.states).filter((i) => Do(t, i)), ...Object.keys(t.states).filter((i) => Gt(t, i))], s = (i) => `${i} ${t.states[i]?.attributes.friendly_name ?? ""}`.toLowerCase();
+  const e = [...Object.keys(t.states).filter((i) => Eo(t, i)), ...Object.keys(t.states).filter((i) => Gt(t, i))], s = (i) => `${i} ${t.states[i]?.attributes.friendly_name ?? ""}`.toLowerCase();
   return e.find((i) => /(general|total|casa|home|house|vivienda|grid|red|import|contador|main)/.test(s(i))) ?? void 0;
 }
 const fa = {
@@ -3931,7 +3931,7 @@ let gt = class extends A {
   }
   /** Up to 3 routines for the 2/2 card, numbered in the order they were picked. */
   _vacuumSettings() {
-    const t = this.hass, e = this.draft.config, s = e.name || this._entName(e.entity), i = (e.routines ?? []).filter((c) => t.states[c]), n = Dn(t, e.entity), a = Object.keys(t.states).filter((c) => (Yl(t, c) || i.includes(c)) && !n.includes(c) && this._visible(c)), o = (c) => {
+    const t = this.hass, e = this.draft.config, s = e.name || this._entName(e.entity), i = (e.routines ?? []).filter((c) => t.states[c]), n = En(t, e.entity), a = Object.keys(t.states).filter((c) => (Yl(t, c) || i.includes(c)) && !n.includes(c) && this._visible(c)), o = (c) => {
       const h = i.includes(c) ? i.filter((u) => u !== c) : i.length < 3 ? [...i, c] : i;
       this._set({ routines: h.length ? h : void 0 });
     }, l = (c) => {
@@ -4056,7 +4056,7 @@ let gt = class extends A {
   /** Power sensors for the main meter or a consumer (the ones already used last). */
   _powerList() {
     const t = this.hass, e = new Set(this._consumers.map((s) => s.entity));
-    return Object.keys(t.states).filter((s) => Eo(t, s) && this._visible(s) && this._match(this._entName(s), s)).sort((s, i) => Number(e.has(s)) - Number(e.has(i)) || this._entName(s).localeCompare(this._entName(i))).slice(0, 80);
+    return Object.keys(t.states).filter((s) => Do(t, s) && this._visible(s) && this._match(this._entName(s), s)).sort((s, i) => Number(e.has(s)) - Number(e.has(i)) || this._entName(s).localeCompare(this._entName(i))).slice(0, 80);
   }
   /** Switch: colour (with a preview), 2/2 view, icon and consumption sensors. */
   _switchSettings(t) {
@@ -4706,7 +4706,7 @@ se([
   v()
 ], gt.prototype, "_ci", 2);
 gt = se([
-  D("terral-card-config")
+  E("terral-card-config")
 ], gt);
 function Wo(t, e, s) {
   document.querySelector("terral-card-config")?.remove();
@@ -4732,7 +4732,7 @@ var Ac = Object.defineProperty, Tc = Object.getOwnPropertyDescriptor, bt = (t, e
     (o = t[a]) && (n = (i ? o(e, s, n) : o(n)) || n);
   return i && n && Ac(e, s, n), n;
 };
-const Dc = "terral-home-light";
+const Ec = "terral-home-light";
 let Kt = class extends R {
   constructor() {
     super(...arguments), this.preview = !1, this._size = "s21", this._held = !1, this._openWindow = () => {
@@ -5343,12 +5343,12 @@ bt([
   v()
 ], Kt.prototype, "_size", 2);
 Kt = bt([
-  D(Dc)
+  E(Ec)
 ], Kt);
 let ve = class extends R {
   render() {
     if (!this.hass || !this.entity) return f;
-    const t = H(this.hass), e = this.colors?.length ? this.colors.map((i) => ({ rgb: i, name: ot(i) })) : Ec[t] ??= Oc(t), s = be(this.entity);
+    const t = H(this.hass), e = this.colors?.length ? this.colors.map((i) => ({ rgb: i, name: ot(i) })) : Dc[t] ??= Oc(t), s = be(this.entity);
     return e.slice(0, 6).map(
       (i) => d`<button
         class=${s && ot(s) === ot(i.rgb) ? "sel" : ""}
@@ -5388,9 +5388,9 @@ bt([
   $({ attribute: !1 })
 ], ve.prototype, "colors", 2);
 ve = bt([
-  D("terral-light-favs")
+  E("terral-light-favs")
 ], ve);
-const Ec = {}, Oc = (t) => bn.map((e) => ({ rgb: e.rgb, name: e.name[t] })), jc = { home: 1, away: 2, night: 4, custom: 16, vacation: 32 }, Ro = ["away", "home", "night", "vacation", "custom"], Pc = ["away", "home", "vacation"], tn = {
+const Dc = {}, Oc = (t) => bn.map((e) => ({ rgb: e.rgb, name: e.name[t] })), jc = { home: 1, away: 2, night: 4, custom: 16, vacation: 32 }, Ro = ["away", "home", "night", "vacation", "custom"], Pc = ["away", "home", "vacation"], tn = {
   away: [255, 122, 107],
   home: [90, 200, 250],
   night: [130, 140, 255],
@@ -5730,7 +5730,7 @@ Te([
   v()
 ], Ct.prototype, "_busy", 2);
 Ct = Te([
-  D("terral-code-sheet")
+  E("terral-code-sheet")
 ], Ct);
 function Fo(t, e, s) {
   const i = document.createElement("terral-code-sheet");
@@ -6023,7 +6023,7 @@ ms([
   v()
 ], Qt.prototype, "_tick", 2);
 Qt = ms([
-  D("terral-alarm-dialog")
+  E("terral-alarm-dialog")
 ], Qt);
 function Jc(t, e, s, i) {
   document.querySelector("terral-alarm-dialog")?.remove();
@@ -6422,7 +6422,7 @@ li([
   v()
 ], $e.prototype, "_tick", 2);
 $e = li([
-  D(sd)
+  E(sd)
 ], $e);
 const Ms = (t, e, s) => t.map((i, n) => Math.round(i + (e[n] - i) * s)), le = (t, e) => e == null ? `rgb(${t.join(",")})` : `rgba(${t.join(",")},${e})`, Si = [52, 199, 123], id = [255, 149, 0], _a = [90, 200, 250], Ci = "#b3261e", nd = "#3a3d4a", ba = (t, e, s, i, n) => `--bg:${le(Ms(t, [255, 255, 255], e), 0.95)};--bg-solid:${le(Ms(t, [255, 255, 255], e))};--fg:${le(Ms(i, [10, 10, 20], 0.8))};--fg2:${le(Ms(i, [20, 10, 30], 0.7))};--accent:${le(s)};--lk:${n}`;
 function Fe(t, e) {
@@ -6452,7 +6452,7 @@ function Be(t, e, s) {
       return e.car === "none" ? r(t, "ch_none") : r(t, "ch_unlocked");
   }
 }
-var ad = Object.defineProperty, od = Object.getOwnPropertyDescriptor, De = (t, e, s, i) => {
+var ad = Object.defineProperty, od = Object.getOwnPropertyDescriptor, Ee = (t, e, s, i) => {
   for (var n = i > 1 ? void 0 : i ? od(e, s) : e, a = t.length - 1, o; a >= 0; a--)
     (o = t[a]) && (n = (i ? o(e, s, n) : o(n)) || n);
   return i && n && ad(e, s, n), n;
@@ -6881,23 +6881,23 @@ zt.styles = [
       }
     `
 ];
-De([
+Ee([
   $({ attribute: !1 })
 ], zt.prototype, "config", 2);
-De([
+Ee([
   $()
 ], zt.prototype, "name", 2);
-De([
+Ee([
   $({ attribute: !1 })
 ], zt.prototype, "onSettings", 2);
-De([
+Ee([
   v()
 ], zt.prototype, "_sessions", 2);
-De([
+Ee([
   v()
 ], zt.prototype, "_histError", 2);
-zt = De([
-  D("terral-charger-dialog")
+zt = Ee([
+  E("terral-charger-dialog")
 ], zt);
 function rd(t, e, s, i) {
   document.querySelector("terral-charger-dialog")?.remove();
@@ -7413,7 +7413,7 @@ ie([
   v()
 ], ft.prototype, "_sessionStart", 2);
 ft = ie([
-  D(hd)
+  E(hd)
 ], ft);
 var pd = Object.defineProperty, ud = Object.getOwnPropertyDescriptor, ci = (t, e, s, i) => {
   for (var n = i > 1 ? void 0 : i ? ud(e, s) : e, a = t.length - 1, o; a >= 0; a--)
@@ -7518,7 +7518,7 @@ ci([
   $()
 ], ke.prototype, "align", 2);
 ke = ci([
-  D("terral-pop")
+  E("terral-pop")
 ], ke);
 function sn(t, e, s = "left") {
   document.querySelector("terral-pop")?.remove();
@@ -7776,7 +7776,7 @@ _s([
   v()
 ], Jt.prototype, "_pending", 2);
 Jt = _s([
-  D("terral-climate-dialog")
+  E("terral-climate-dialog")
 ], Jt);
 function md(t, e, s, i) {
   document.querySelector("terral-climate-dialog")?.remove();
@@ -8335,7 +8335,7 @@ bs([
   v()
 ], Zt.prototype, "_tick", 2);
 Zt = bs([
-  D(yd)
+  E(yd)
 ], Zt);
 /**
  * @license
@@ -8537,10 +8537,10 @@ function on(t, e, s) {
   const n = i.toLocaleDateString(t?.locale?.language ?? t?.language ?? void 0, { weekday: "short" }).replace(".", "");
   return n.charAt(0).toUpperCase() + n.slice(1);
 }
-var Dd = Object.defineProperty, Ed = Object.getOwnPropertyDescriptor, Ee = (t, e, s, i) => {
-  for (var n = i > 1 ? void 0 : i ? Ed(e, s) : e, a = t.length - 1, o; a >= 0; a--)
+var Ed = Object.defineProperty, Dd = Object.getOwnPropertyDescriptor, De = (t, e, s, i) => {
+  for (var n = i > 1 ? void 0 : i ? Dd(e, s) : e, a = t.length - 1, o; a >= 0; a--)
     (o = t[a]) && (n = (i ? o(e, s, n) : o(n)) || n);
-  return i && n && Dd(e, s, n), n;
+  return i && n && Ed(e, s, n), n;
 };
 let At = class extends A {
   constructor() {
@@ -8799,23 +8799,23 @@ At.styles = [
       }
     `
 ];
-Ee([
+De([
   $({ attribute: !1 })
 ], At.prototype, "config", 2);
-Ee([
+De([
   $()
 ], At.prototype, "name", 2);
-Ee([
+De([
   $({ attribute: !1 })
 ], At.prototype, "onSettings", 2);
-Ee([
+De([
   v()
 ], At.prototype, "_hourly", 2);
-Ee([
+De([
   v()
 ], At.prototype, "_daily", 2);
-At = Ee([
-  D("terral-weather-dialog")
+At = De([
+  E("terral-weather-dialog")
 ], At);
 function Od(t, e, s, i) {
   document.querySelector("terral-weather-dialog")?.remove();
@@ -9226,7 +9226,7 @@ Oe([
   v()
 ], Tt.prototype, "_daily", 2);
 Tt = Oe([
-  D(Ld)
+  E(Ld)
 ], Tt);
 var Id = Object.defineProperty, Hd = Object.getOwnPropertyDescriptor, je = (t, e, s, i) => {
   for (var n = i > 1 ? void 0 : i ? Hd(e, s) : e, a = t.length - 1, o; a >= 0; a--)
@@ -9234,7 +9234,7 @@ var Id = Object.defineProperty, Hd = Object.getOwnPropertyDescriptor, je = (t, e
   return i && n && Id(e, s, n), n;
 };
 const Wd = { vacuum: "vac_mode_vacuum", mop: "vac_mode_mop", both: "vac_mode_both" }, Ma = /* @__PURE__ */ new Set(["off"]);
-let Dt = class extends A {
+let Et = class extends A {
   constructor() {
     super(...arguments), this.name = "", this._rooms = [], this._picked = /* @__PURE__ */ new Set();
   }
@@ -9276,10 +9276,10 @@ let Dt = class extends A {
     if (!e) return d`<p>${r(t, "not_found")}</p>`;
     const s = this._p, i = Vt(e), n = i === "unavailable", a = i === "cleaning" || i === "returning", o = Rl(t, e, s), l = Tn(e).filter((w) => !Ma.has(w)), c = Ws(t, s.mopIntensity).filter((w) => !Ma.has(w)), h = Ws(t, s.mopMode), u = o.current !== "vacuum" || !o.modes.length, p = o.current !== "mop", m = Mo(t, e, s, !0, 15), b = xo(t, e, s), g = Co(t, s), _ = $o(t, this.config), x = (w) => d`<em>${r(t, w)}</em>`;
     return d`
-      <div class="status ${En(i) ? "on" : ""}" style=${ko(i)}>
+      <div class="status ${Dn(i) ? "on" : ""}" style=${ko(i)}>
         <span class="icon">${ns(30)}${i === "error" ? d`<span class="err">${Ga(14)}</span>` : f}</span>
         <div class="txt">
-          <strong>${Es(t, e, s)}</strong>
+          <strong>${Ds(t, e, s)}</strong>
           <span>${m ? d`<b class="bat" style="color:${m.color}">${m.icon}${m.text}</b>` : f}${g && (a || i === "paused") ? d` · ${g}` : f}</span>
         </div>
       </div>
@@ -9330,7 +9330,7 @@ let Dt = class extends A {
     `;
   }
 };
-Dt.styles = [
+Et.styles = [
   A.styles,
   T`
       .status {
@@ -9522,22 +9522,22 @@ Dt.styles = [
 ];
 je([
   $({ attribute: !1 })
-], Dt.prototype, "config", 2);
+], Et.prototype, "config", 2);
 je([
   $()
-], Dt.prototype, "name", 2);
+], Et.prototype, "name", 2);
 je([
   $({ attribute: !1 })
-], Dt.prototype, "onSettings", 2);
+], Et.prototype, "onSettings", 2);
 je([
   v()
-], Dt.prototype, "_rooms", 2);
+], Et.prototype, "_rooms", 2);
 je([
   v()
-], Dt.prototype, "_picked", 2);
-Dt = je([
-  D("terral-vacuum-dialog")
-], Dt);
+], Et.prototype, "_picked", 2);
+Et = je([
+  E("terral-vacuum-dialog")
+], Et);
 function Rd(t, e, s, i) {
   document.querySelector("terral-vacuum-dialog")?.remove();
   const n = document.createElement("terral-vacuum-dialog");
@@ -9695,7 +9695,7 @@ let Me = class extends R {
     return d`<div class="row">
       <div class="info">
         ${n != null && e !== "returning" ? d`<div class="track"><i style="width:${n}%"></i></div>` : f}
-        <span class="facts">${a || Es(s, t, this._p)}</span>
+        <span class="facts">${a || Ds(s, t, this._p)}</span>
       </div>
       ${e === "paused" ? d`<button class="rb on" aria-label=${r(s, "vac_resume")} @click=${this._act(Ue)}>${As(18)}</button>` : $t(t, "PAUSE") ? d`<button class="rb on" aria-label=${r(s, "vac_pause")} @click=${this._act(Yi)}>${Ya(18)}</button>` : f}
       ${$t(t, "RETURN") ? d`<button class="rb" aria-label=${r(s, "vac_to_base")} ?disabled=${e === "returning"} @click=${this._act(Vi)}>${Ns(19)}</button>` : f}
@@ -9705,14 +9705,14 @@ let Me = class extends R {
     if (!this._config || !this.hass) return f;
     const t = this.hass, e = this._entity;
     if (!e) return d`<div class="card off missing"><span>${r(t, "not_found")}</span><small>${this._config.entity}</small></div>`;
-    const s = Vt(e), i = this._size, n = this._name, a = Es(t, e, this._p);
+    const s = Vt(e), i = this._size, n = this._name, a = Ds(t, e, this._p);
     let o;
     return i === "s11" ? o = d`${this._icon(e, s, 22)}<div class="text"><span class="name">${n}</span>
-        <span class="state line"><span class="grow">${Es(t, e, this._p, !0)}</span>${this._battery(e, !1)}</span></div>` : i === "s21" ? o = d`${this._icon(e, s, 32)}<div class="text"><span class="name">${n}</span><span class="state">${a}</span>
+        <span class="state line"><span class="grow">${Ds(t, e, this._p, !0)}</span>${this._battery(e, !1)}</span></div>` : i === "s21" ? o = d`${this._icon(e, s, 32)}<div class="text"><span class="name">${n}</span><span class="state">${a}</span>
         <span class="state">${this._battery(e, !0)}</span></div>` : o = d`<div class="head">${this._icon(e, s, 32)}<div class="text"><span class="name">${n}</span><span class="state">${a}</span></div>
           <span class="top">${this._battery(e, !0)}</span></div>
         ${this._bottom22(e, s)}`, d`<div
-      class="card ${i} ${En(s) ? "on" : "off"} ${s === "unavailable" ? "unavailable" : ""}"
+      class="card ${i} ${Dn(s) ? "on" : "off"} ${s === "unavailable" ? "unavailable" : ""}"
       style=${ko(s)}
       @pointerdown=${this._down}
       @pointermove=${this._move}
@@ -9998,7 +9998,7 @@ di([
   v()
 ], Me.prototype, "_size", 2);
 Me = di([
-  D(Bd)
+  E(Bd)
 ], Me);
 var Yd = Object.defineProperty, Vd = Object.getOwnPropertyDescriptor, ne = (t, e, s, i) => {
   for (var n = i > 1 ? void 0 : i ? Vd(e, s) : e, a = t.length - 1, o; a >= 0; a--)
@@ -10355,7 +10355,7 @@ ne([
   v()
 ], mt.prototype, "_error", 2);
 mt = ne([
-  D("terral-switch-dialog")
+  E("terral-switch-dialog")
 ], mt);
 function Gd(t, e, s, i) {
   document.querySelector("terral-switch-dialog")?.remove();
@@ -10794,7 +10794,7 @@ xs([
   v()
 ], te.prototype, "_usage", 2);
 te = xs([
-  D(Jd)
+  E(Jd)
 ], te);
 const ar = T`
   .ehead {
@@ -11093,7 +11093,7 @@ var Zd = Object.defineProperty, th = Object.getOwnPropertyDescriptor, Pe = (t, e
     (o = t[a]) && (n = (i ? o(e, s, n) : o(n)) || n);
   return i && n && Zd(e, s, n), n;
 };
-let Et = class extends A {
+let Dt = class extends A {
   constructor() {
     super(...arguments), this.name = "", this._error = !1, this._started = !1;
   }
@@ -11167,7 +11167,7 @@ let Et = class extends A {
     `;
   }
 };
-Et.styles = [
+Dt.styles = [
   A.styles,
   ar,
   T`
@@ -11361,22 +11361,22 @@ Et.styles = [
 ];
 Pe([
   $({ attribute: !1 })
-], Et.prototype, "config", 2);
+], Dt.prototype, "config", 2);
 Pe([
   $()
-], Et.prototype, "name", 2);
+], Dt.prototype, "name", 2);
 Pe([
   $({ attribute: !1 })
-], Et.prototype, "onSettings", 2);
+], Dt.prototype, "onSettings", 2);
 Pe([
   v()
-], Et.prototype, "_usage", 2);
+], Dt.prototype, "_usage", 2);
 Pe([
   v()
-], Et.prototype, "_error", 2);
-Et = Pe([
-  D("terral-energy-dialog")
-], Et);
+], Dt.prototype, "_error", 2);
+Dt = Pe([
+  E("terral-energy-dialog")
+], Dt);
 function eh(t, e, s, i) {
   document.querySelector("terral-energy-dialog")?.remove();
   const n = document.createElement("terral-energy-dialog");
@@ -11595,7 +11595,7 @@ ys([
   v()
 ], ee.prototype, "_usage", 2);
 ee = ys([
-  D(ah)
+  E(ah)
 ], ee);
 /**
  * @license
@@ -11622,7 +11622,7 @@ const { I: oh } = Sr, Sa = (t) => t, Ca = () => document.createComment(""), Re =
     }
   }
   return s;
-}, Nt = (t, e, s = t) => (t._$AI(e, s), t), rh = {}, lh = (t, e = rh) => t._$AH = e, ch = (t) => t._$AH, Di = (t) => {
+}, Nt = (t, e, s = t) => (t._$AI(e, s), t), rh = {}, lh = (t, e = rh) => t._$AH = e, ch = (t) => t._$AH, Ei = (t) => {
   t._$AR(), t._$AA.remove();
 };
 /**
@@ -11667,15 +11667,15 @@ const za = (t, e, s) => {
         Nt(w, a[b]), c[b] = w;
       } else c[b] = Nt(x, a[b]), Re(t, n[p], x), n[_] = null;
       b++;
-    } else Di(n[m]), m--;
-    else Di(n[p]), p++;
+    } else Ei(n[m]), m--;
+    else Ei(n[p]), p++;
     for (; b <= g; ) {
       const _ = Re(t, c[g + 1]);
       Nt(_, a[b]), c[b++] = _;
     }
     for (; p <= m; ) {
       const _ = n[p++];
-      _ !== null && Di(_);
+      _ !== null && Ei(_);
     }
     return this.ut = o, lh(t, c), St;
   }
@@ -11910,7 +11910,7 @@ Ne([
   v()
 ], Ot.prototype, "_quick", 2);
 Ot = Ne([
-  D("terral-section-sheet")
+  E("terral-section-sheet")
 ], Ot);
 function mh(t, e, s, i) {
   document.querySelector("terral-section-sheet")?.remove();
@@ -11940,7 +11940,7 @@ const xh = [
   "mdi:shield-home",
   "mdi:lightbulb-group"
 ];
-function Ei(t) {
+function Di(t) {
   window.history.pushState(null, "", t), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
 }
 let V = class extends A {
@@ -12287,7 +12287,7 @@ tt([
   v()
 ], V.prototype, "_sidebar", 2);
 V = tt([
-  D("terral-dashboard-sheet")
+  E("terral-dashboard-sheet")
 ], V);
 function Ta(t, e) {
   document.querySelector("terral-dashboard-sheet")?.remove();
@@ -12494,9 +12494,9 @@ hi([
   v()
 ], Se.prototype, "_err", 2);
 Se = hi([
-  D("terral-page-sheet")
+  E("terral-page-sheet")
 ], Se);
-function Da(t, e) {
+function Ea(t, e) {
   document.querySelector("terral-page-sheet")?.remove();
   const s = document.createElement("terral-page-sheet");
   return s.hass = t, s.options = e, document.body.appendChild(s), s;
@@ -12523,7 +12523,7 @@ const Ch = (t = 20) => y`<svg width=${t} height=${t} viewBox="0 0 24 24" fill="n
   { type: "vacuum", name: "type_vacuum", desc: "type_vacuum_desc", icon: () => ns(21), color: "#22a587" },
   { type: "switch", name: "type_switch", desc: "type_switch_desc", icon: () => ht("plug", !0, 20), color: "#ff7a2f" },
   { type: "energy", name: "type_energy", desc: "type_energy_desc", icon: () => Q("bolt", 20), color: "#ffb020" }
-], Dh = [
+], Eh = [
   { name: "type_cover", icon: () => zh() },
   { name: "type_sensor", icon: () => Ah() }
 ];
@@ -12535,7 +12535,7 @@ let gs = class extends A {
     return r(this.hass, "add_card");
   }
   renderContent() {
-    const t = this._q.trim().toLowerCase(), e = (a, o) => !t || r(this.hass, a).toLowerCase().includes(t) || o && r(this.hass, o).toLowerCase().includes(t), s = Th.filter((a) => e(a.name, a.desc)), i = (a) => a === "alarm" && !Object.keys(this.hass.states).some((o) => o.startsWith("alarm_control_panel.")) ? "alarm_missing" : a === "climate" && !Object.keys(this.hass.states).some((o) => o.startsWith("climate.")) ? "climate_missing" : a === "weather" && !Object.keys(this.hass.states).some((o) => o.startsWith("weather.")) ? "weather_missing" : a === "vacuum" && !Object.keys(this.hass.states).some((o) => o.startsWith("vacuum.")) ? "vacuum_missing" : a === "switch" && !Object.keys(this.hass.states).some((o) => o.startsWith("switch.") || o.startsWith("input_boolean.")) ? "switch_missing" : a === "energy" && !Object.keys(this.hass.states).some((o) => Eo(this.hass, o)) ? "energy_missing" : void 0, n = Dh.filter((a) => e(a.name));
+    const t = this._q.trim().toLowerCase(), e = (a, o) => !t || r(this.hass, a).toLowerCase().includes(t) || o && r(this.hass, o).toLowerCase().includes(t), s = Th.filter((a) => e(a.name, a.desc)), i = (a) => a === "alarm" && !Object.keys(this.hass.states).some((o) => o.startsWith("alarm_control_panel.")) ? "alarm_missing" : a === "climate" && !Object.keys(this.hass.states).some((o) => o.startsWith("climate.")) ? "climate_missing" : a === "weather" && !Object.keys(this.hass.states).some((o) => o.startsWith("weather.")) ? "weather_missing" : a === "vacuum" && !Object.keys(this.hass.states).some((o) => o.startsWith("vacuum.")) ? "vacuum_missing" : a === "switch" && !Object.keys(this.hass.states).some((o) => o.startsWith("switch.") || o.startsWith("input_boolean.")) ? "switch_missing" : a === "energy" && !Object.keys(this.hass.states).some((o) => Do(this.hass, o)) ? "energy_missing" : void 0, n = Eh.filter((a) => e(a.name));
     return d`
       <label class="search">
         ${Ua()}
@@ -12671,9 +12671,9 @@ Rn([
   v()
 ], gs.prototype, "_q", 2);
 gs = Rn([
-  D("terral-add-sheet")
+  E("terral-add-sheet")
 ], gs);
-function Eh(t, e) {
+function Dh(t, e) {
   const s = document.createElement("terral-add-sheet");
   return s.hass = t, s.onType = e, document.body.appendChild(s), s;
 }
@@ -12788,19 +12788,19 @@ qn([
   $()
 ], fs.prototype, "version", 2);
 fs = qn([
-  D("terral-menu-sheet")
+  E("terral-menu-sheet")
 ], fs);
 function Ph(t, e, s) {
   const i = document.createElement("terral-menu-sheet");
   return i.hass = t, i.version = e, i.actions = s, document.body.appendChild(i), i;
 }
-const rr = "0.16.2";
+const rr = "0.16.3";
 var Nh = Object.defineProperty, Lh = Object.getOwnPropertyDescriptor, N = (t, e, s, i) => {
   for (var n = i > 1 ? void 0 : i ? Lh(e, s) : e, a = t.length - 1, o; a >= 0; a--)
     (o = t[a]) && (n = (i ? o(e, s, n) : o(n)) || n);
   return i && n && Nh(e, s, n), n;
 };
-const nt = "top", Ea = [
+const nt = "top", Da = [
   { w: 1, h: 1 },
   { w: 1, h: 2 },
   { w: 2, h: 2 },
@@ -12815,12 +12815,12 @@ const nt = "top", Ea = [
   switch: "terral-home-switch",
   energy: "terral-home-energy"
 }, qh = ["entity", "device", "name", "invert", "use_light_color", "status_entity", "power_entity", "energy_entity", "max_power", "min_temp", "max_temp", "temp_step", "mode_rules", "show_swing", "forecast_2x2", "animate", "show_details", "forecast_days", "routines", "icon", "color", "style", "sum_only", "consumers", "rest", "view", "animate"], Ce = "#3a4f80", Cs = "58,79,128", Uh = `linear-gradient(180deg, ${Ce} 0, rgba(${Cs},.6) 36px, rgba(${Cs},0) 120px), linear-gradient(0deg, ${Ce} 0, rgba(${Cs},.6) 28px, rgba(${Cs},0) 96px), `, Oi = Ce, Fh = Ce, ji = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-let E = class extends R {
+let D = class extends R {
   constructor() {
     super(...arguments), this.narrow = !1, this._edit = !1, this._cols = 2, this._rowH = 82, this._dragDx = 0, this._dragDy = 0, this._lanes = 1, this._laneW = 358, this._pad = 16, this._strip = 0, this._colW = 160, this._gap = 10, this._els = /* @__PURE__ */ new Map(), this._loading = !1, this._pending = 0, this._onKey = (t) => {
       t.key !== "Escape" || this._renaming || this._edit && !document.querySelector("terral-add-sheet, terral-menu-sheet, terral-confirm-sheet, terral-card-config, terral-section-sheet, terral-dashboard-sheet, terral-page-sheet") && (this._edit = !1);
     }, this._add = () => {
-      !this.hass || !this._layout || Eh(this.hass, (t) => {
+      !this.hass || !this._layout || Dh(this.hass, (t) => {
         Wo(this.hass, Cc(t), {
           mode: "add",
           onBack: () => this._add(),
@@ -12891,16 +12891,25 @@ let E = class extends R {
     );
   }
   updated(t) {
-    if (t.has("panel") && this._dashLoaded && this._dashLoaded !== this._dash && (this._unsub?.then((s) => s()).catch(() => {
+    if (t.has("panel") && this._dashLoaded && this._dashLoaded !== this._dash && (this._unsub?.then((i) => i()).catch(() => {
     }), this._unsub = void 0, this._layout = void 0, this._loading = !1, this._edit = !1, this._els.clear()), (t.has("hass") || t.has("panel")) && this.hass) {
       !this._layout && !this._loading && this._load();
-      for (const s of this._els.values()) s.hass = this.hass;
+      for (const i of this._els.values()) i.hass = this.hass;
       zc(this.hass);
     }
     const e = this.renderRoot.querySelector(".grid.strip");
-    if (e?.classList.toggle("more", e.scrollWidth - e.scrollLeft - e.clientWidth > 4), e && !e.dataset.watch && (e.dataset.watch = "1", e.addEventListener("scroll", () => e.classList.toggle("more", e.scrollWidth - e.scrollLeft - e.clientWidth > 4), { passive: !0 })), t.has("_renaming") && this._renaming) {
-      const s = this.renderRoot.querySelector("input.rename");
-      s?.focus(), s?.select();
+    e?.classList.toggle("more", e.scrollWidth - e.scrollLeft - e.clientWidth > 4), e && !e.dataset.watch && (e.dataset.watch = "1", e.addEventListener("scroll", () => e.classList.toggle("more", e.scrollWidth - e.scrollLeft - e.clientWidth > 4), { passive: !0 }));
+    const s = this.renderRoot.querySelector(".pills");
+    if (s) {
+      const i = () => {
+        const n = s.scrollLeft > 4, a = s.scrollWidth - s.scrollLeft - s.clientWidth > 4;
+        s.style.setProperty("--l", n ? "40px" : "0px"), s.style.setProperty("--r", a ? "56px" : "0px");
+      };
+      i(), s.dataset.watch || (s.dataset.watch = "1", s.addEventListener("scroll", i, { passive: !0 }), new ResizeObserver(i).observe(s));
+    }
+    if (t.has("_renaming") && this._renaming) {
+      const i = this.renderRoot.querySelector("input.rename");
+      i?.focus(), i?.select();
     }
   }
   /**
@@ -13016,7 +13025,7 @@ let E = class extends R {
     return this.route?.prefix || `/${location.pathname.split("/")[1] ?? "terral-home"}`;
   }
   _goPage(t) {
-    Ei(t ? `${this._prefix}/${t}` : this._prefix);
+    Di(t ? `${this._prefix}/${t}` : this._prefix);
   }
   get _top() {
     return this._page.cards ?? [];
@@ -13090,7 +13099,7 @@ let E = class extends R {
   }
   /** The corner grip only shows when the card has more than one size to offer. */
   _canResize(t, e = !1) {
-    return e && this._strip === 1 ? !1 : (this._els.get(t.id)?.getTerralSizes?.() ?? Ea).filter((i) => i.w <= this._cols && (!e || i.h <= this._strip)).length > 1;
+    return e && this._strip === 1 ? !1 : (this._els.get(t.id)?.getTerralSizes?.() ?? Da).filter((i) => i.w <= this._cols && (!e || i.h <= this._strip)).length > 1;
   }
   _element(t, e) {
     let s = this._els.get(t.id);
@@ -13127,7 +13136,7 @@ let E = class extends R {
     </nav>`;
   }
   _addPage() {
-    this.hass && Da(this.hass, {
+    this.hass && Ea(this.hass, {
       mode: "create",
       title: "",
       first: !1,
@@ -13143,7 +13152,7 @@ let E = class extends R {
   _pageSettings() {
     if (!this.hass) return;
     const t = this._pageId, e = this._pages, s = e.findIndex((a) => a.id === t), i = s >= 0 ? e[s] : void 0, n = (i?.cards?.length ?? 0) + (i?.sections ?? []).reduce((a, o) => a + o.cards.length, 0);
-    Da(this.hass, {
+    Ea(this.hass, {
       mode: "edit",
       title: i ? i.title : this._layout?.page_title ?? "",
       first: !i,
@@ -13207,7 +13216,7 @@ let E = class extends R {
         }), ((i ?? "") !== (s.title ?? "") || (n ?? "") !== (s.icon ?? "") || !!a != !!s.require_admin) && (await t.callWS({ type: "terral_home/dashboards/update", dashboard: this._dash, title: i || null, icon: n || null, require_admin: !!a }), this._titleOverride = i || void 0);
       },
       onDelete: this._dash === "home" ? void 0 : async () => {
-        await t.callWS({ type: "terral_home/dashboards/delete", dashboard: this._dash }), Ei("/terral-home");
+        await t.callWS({ type: "terral_home/dashboards/delete", dashboard: this._dash }), Di("/terral-home");
       }
     });
   }
@@ -13220,7 +13229,7 @@ let E = class extends R {
       admin: !0,
       onSave: async ({ title: e, icon: s }) => {
         const i = await t.callWS({ type: "terral_home/dashboards/create", title: e, icon: s });
-        window.setTimeout(() => Ei(`/terral-home-${i.id}`), 300);
+        window.setTimeout(() => Di(`/terral-home-${i.id}`), 300);
       }
     });
   }
@@ -13272,7 +13281,7 @@ let E = class extends R {
       const s = new Map(e.sections.map((o) => [o.title.toLowerCase(), o])), i = [e.cards, ...e.sections.map((o) => o.cards)], n = [];
       for (const o of i)
         for (const l of [...o]) {
-          const c = Ds(t, l.entity);
+          const c = Es(t, l.entity);
           c && (n.push([l, c]), o.splice(o.indexOf(l), 1));
         }
       const a = [...new Set(n.map(([, o]) => o))].filter((o) => !s.has(o.toLowerCase())).sort((o, l) => o.localeCompare(l));
@@ -13286,7 +13295,7 @@ let E = class extends R {
   // ---- Resize from the bottom-right corner --------------------------------
   _resizeDown(t, e) {
     t.preventDefault(), t.stopPropagation();
-    const s = t.currentTarget, i = s.closest(".cell").getBoundingClientRect(), n = this._findCard(e.id)?.key === nt && this._strip > 0, a = (this._els.get(e.id)?.getTerralSizes?.() ?? Ea).filter((l) => l.w <= this._cols && (!n || l.h <= this._strip));
+    const s = t.currentTarget, i = s.closest(".cell").getBoundingClientRect(), n = this._findCard(e.id)?.key === nt && this._strip > 0, a = (this._els.get(e.id)?.getTerralSizes?.() ?? Da).filter((l) => l.w <= this._cols && (!n || l.h <= this._strip));
     this._resizeOrigin = { left: i.left, top: i.top, sizes: a };
     const o = this._sizeOf(e, n);
     this._resize = { id: e.id, w: o.w, h: o.h }, s.setPointerCapture(t.pointerId);
@@ -13309,7 +13318,7 @@ let E = class extends R {
     if (!e) return;
     const s = this._sizeOf(e.card, this._inStrip(e.key));
     s.w === t.w && s.h === t.h || this._update((i) => {
-      const n = E._list(i, e.key)?.find((a) => a.id === t.id);
+      const n = D._list(i, e.key)?.find((a) => a.id === t.id);
       n && Object.assign(n, { w: t.w, h: t.h });
     });
   }
@@ -13370,7 +13379,7 @@ let E = class extends R {
   _moveCard(t, e, s) {
     const i = this._findCard(t);
     !i || s === t || this._update((n) => {
-      const a = E._list(n, i.key), o = a.findIndex((m) => m.id === t), l = s ? a.findIndex((m) => m.id === s) : -1, [c] = a.splice(o, 1), h = E._list(n, e);
+      const a = D._list(n, i.key), o = a.findIndex((m) => m.id === t), l = s ? a.findIndex((m) => m.id === s) : -1, [c] = a.splice(o, 1), h = D._list(n, e);
       if (!h) {
         a.splice(o, 0, c);
         return;
@@ -13542,7 +13551,7 @@ let E = class extends R {
     </div>`;
   }
 };
-E.styles = T`
+D.styles = T`
     :host {
       display: block;
       height: 100%;
@@ -13667,6 +13676,11 @@ E.styles = T`
       padding: 4px 16px;
       overflow-x: auto;
       scrollbar-width: none;
+      /* --l / --r are set from the scroll position: a fade only where pills are hidden */
+      --l: 0px;
+      --r: 0px;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--l), #000 calc(100% - var(--r)), transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0, #000 var(--l), #000 calc(100% - var(--r)), transparent 100%);
     }
     .pills::-webkit-scrollbar {
       display: none;
@@ -14091,70 +14105,70 @@ E.styles = T`
   `;
 N([
   $({ attribute: !1 })
-], E.prototype, "hass", 2);
+], D.prototype, "hass", 2);
 N([
   $({ type: Boolean })
-], E.prototype, "narrow", 2);
+], D.prototype, "narrow", 2);
 N([
   $({ attribute: !1 })
-], E.prototype, "route", 2);
+], D.prototype, "route", 2);
 N([
   $({ attribute: !1 })
-], E.prototype, "panel", 2);
+], D.prototype, "panel", 2);
 N([
   v()
-], E.prototype, "_layout", 2);
+], D.prototype, "_layout", 2);
 N([
   v()
-], E.prototype, "_error", 2);
+], D.prototype, "_error", 2);
 N([
   v()
-], E.prototype, "_edit", 2);
+], D.prototype, "_edit", 2);
 N([
   v()
-], E.prototype, "_cols", 2);
+], D.prototype, "_cols", 2);
 N([
   v()
-], E.prototype, "_rowH", 2);
+], D.prototype, "_rowH", 2);
 N([
   v()
-], E.prototype, "_drag", 2);
+], D.prototype, "_drag", 2);
 N([
   v()
-], E.prototype, "_dropCard", 2);
+], D.prototype, "_dropCard", 2);
 N([
   v()
-], E.prototype, "_dropSection", 2);
+], D.prototype, "_dropSection", 2);
 N([
   v()
-], E.prototype, "_dragDx", 2);
+], D.prototype, "_dragDx", 2);
 N([
   v()
-], E.prototype, "_dragDy", 2);
+], D.prototype, "_dragDy", 2);
 N([
   v()
-], E.prototype, "_resize", 2);
+], D.prototype, "_resize", 2);
 N([
   v()
-], E.prototype, "_renaming", 2);
+], D.prototype, "_renaming", 2);
 N([
   v()
-], E.prototype, "_lanes", 2);
+], D.prototype, "_lanes", 2);
 N([
   v()
-], E.prototype, "_laneW", 2);
+], D.prototype, "_laneW", 2);
 N([
   v()
-], E.prototype, "_pad", 2);
+], D.prototype, "_pad", 2);
 N([
   v()
-], E.prototype, "_dropMark", 2);
+], D.prototype, "_dropMark", 2);
 N([
   v()
-], E.prototype, "_titleOverride", 2);
-E = N([
-  D("terral-home-panel")
-], E);
+], D.prototype, "_titleOverride", 2);
+D = N([
+  E("terral-home-panel")
+], D);
 const q = window;
 q.customCards = q.customCards || [];
 q.customCards.some((t) => t.type === "terral-home-light") || q.customCards.push({
