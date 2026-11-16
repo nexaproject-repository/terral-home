@@ -2,6 +2,9 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.17.2 — 2026-11-16
+- Background: with few cards, the bottom fade sat right under them and left a band of a different colour below; the content now fills the screen so the fade is always at the bottom.
+
 ## 0.17.1 — 2026-11-16
 - Doors and windows: **positions** for windows with X / Y / Z axes — record closed, ventilation and tilted in the settings; the card shows "Ventilación" / "Abatida" in blue even though the contact reads closed, and the group counts them apart ("1 en ventilación").
 - Doors and windows: the alerts are gone (no red for open too long or with the alarm armed, no "!" badge); tamper and vibration stay in the window as data.

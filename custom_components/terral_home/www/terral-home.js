@@ -13989,7 +13989,7 @@ function gp(t, e, s) {
   const i = document.createElement("terral-menu-sheet");
   return i.hass = t, i.version = e, i.actions = s, document.body.appendChild(i), i;
 }
-const Or = "0.17.1";
+const Or = "0.17.2";
 var fp = Object.defineProperty, _p = Object.getOwnPropertyDescriptor, H = (t, e, s, i) => {
   for (var n = i > 1 ? void 0 : i ? _p(e, s) : e, a = t.length - 1, o; a >= 0; a--)
     (o = t[a]) && (n = (i ? o(e, s, n) : o(n)) || n);
@@ -14779,6 +14779,11 @@ N.styles = E`
       overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
       background-size: cover;
+      /* The content grows to the full height, so the bottom fade always sits at
+         the bottom of the screen (with few cards it used to sit right under them,
+         leaving a band of a different colour below). */
+      display: flex;
+      flex-direction: column;
     }
     /* Cards dissolve into the bottom edge as they scroll under it. */
     .fade {
@@ -14786,6 +14791,7 @@ N.styles = E`
       bottom: 0;
       height: 110px;
       margin-top: -110px;
+      flex: none;
       pointer-events: none;
       background: linear-gradient(180deg, rgba(58, 79, 128, 0) 0, rgba(58, 79, 128, 0.55) 45%, rgba(58, 79, 128, 0.92) 80%, #3a4f80 100%);
     }
@@ -14793,6 +14799,8 @@ N.styles = E`
       margin: 0 auto;
       padding: 12px 16px 110px;
       box-sizing: border-box;
+      width: 100%;
+      flex: 1 0 auto;
     }
     @media (min-width: 600px) {
       .wrap {
