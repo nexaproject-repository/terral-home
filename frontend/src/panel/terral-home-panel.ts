@@ -141,6 +141,7 @@ export class TerralHomePanel extends LitElement {
     this._unsub = undefined;
     this._loading = false;
     this._endDrag();
+    this._cancelPick();
   }
 
   protected firstUpdated(): void {
@@ -552,11 +553,46 @@ export class TerralHomePanel extends LitElement {
     this._startDrag("card", cell.dataset.cid!, detail.x, detail.y);
   };
 
+  /**
+   * In move mode the page must still scroll: with a finger, a card is only
+   * picked up after resting on it for a moment; moving earlier scrolls.
+   * The mouse picks it up straight away.
+   */
+  private _pickTimer?: number;
+  private _pickStart?: { x: number; y: number };
+
   private _overlayDown(ev: PointerEvent, id: string) {
     if ((ev.target as HTMLElement).closest("button")) return;
-    ev.preventDefault();
-    this._startDrag("card", id, ev.clientX, ev.clientY);
+    if (ev.pointerType === "mouse") {
+      ev.preventDefault();
+      this._startDrag("card", id, ev.clientX, ev.clientY);
+      return;
+    }
+    this._cancelPick();
+    this._pickStart = { x: ev.clientX, y: ev.clientY };
+    const start = { x: ev.clientX, y: ev.clientY };
+    window.addEventListener("pointermove", this._pickMove);
+    window.addEventListener("pointerup", this._cancelPick);
+    window.addEventListener("pointercancel", this._cancelPick);
+    this._pickTimer = window.setTimeout(() => {
+      this._cancelPick();
+      navigator.vibrate?.(10);
+      this._startDrag("card", id, start.x, start.y);
+    }, 280);
   }
+
+  private _pickMove = (ev: PointerEvent) => {
+    if (this._pickStart && Math.hypot(ev.clientX - this._pickStart.x, ev.clientY - this._pickStart.y) > 8) this._cancelPick();
+  };
+
+  private _cancelPick = () => {
+    clearTimeout(this._pickTimer);
+    this._pickTimer = undefined;
+    this._pickStart = undefined;
+    window.removeEventListener("pointermove", this._pickMove);
+    window.removeEventListener("pointerup", this._cancelPick);
+    window.removeEventListener("pointercancel", this._cancelPick);
+  };
 
   private _handleDown(ev: PointerEvent, id: string) {
     ev.preventDefault();
@@ -984,7 +1020,11 @@ export class TerralHomePanel extends LitElement {
       position: absolute;
       inset: 0;
       border-radius: 22px;
-      touch-action: none;
+      /* Vertical swipes scroll the page; a card is picked up after a short rest. */
+      touch-action: pan-y;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
       cursor: grab;
     }
     .del {
