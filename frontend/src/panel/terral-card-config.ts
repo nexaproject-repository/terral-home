@@ -5,15 +5,16 @@
 //   Per type — light entity / tint; charger lock switch, invert, data sensors,
 //             max power; climate limits, steps, per-mode controls, swing;
 //             weather forecast options; robot vacuum routines on the card;
-//             switch colour, 2/2 view, icon and consumption sensors.
+//             switch colour, 2/2 view, icon and consumption sensors;
+//             home energy view, main meter and consumers.
 // The size is not chosen here: new cards get a default and the corner resizes.
 // In "edit" mode it reports through terral-card-config / terral-card-remove
 // events (see openCardSettings), which the Terral panel stores in the layout.
-import { css, html, nothing, type TemplateResult } from "lit";
+import { css, html, nothing, svg, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant } from "../ha-types";
 import { t, type StringKey } from "../i18n";
-import { backIcon, bulbIcon, checkIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon } from "../shared/icons";
+import { backIcon, bulbIcon, checkIcon, chevronIcon, evChargerIcon, plusIcon, searchIcon, shieldIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
 import { isGroup } from "../light/light-model";
 import {
@@ -37,8 +38,10 @@ import { deviceRoutines, isVacuumScript, routineName } from "../vacuum/vacuum-mo
 import { routineIcon } from "../vacuum/vacuum-look";
 import { SWITCH_COLORS, SWITCH_ICONS, guessIcon, switchIcon, switchTint } from "../switch/switch-look";
 import { meterOf } from "../switch/switch-model";
+import { CONSUMER_COLORS, type Consumer, consumerIcon, consumerName, guessTotal, isPower } from "../energy/energy-model";
+import { ENERGY_ICONS, energyIcon, hexOf } from "../energy/energy-views";
 
-export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch";
+export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch" | "energy";
 export interface CardDraft {
   type: CardType;
   config: Record<string, any>;
@@ -52,9 +55,9 @@ export interface CardConfigOptions {
   onRemove?: () => void;
 }
 
-const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather", vacuum: "type_vacuum", switch: "type_switch" };
+const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather", vacuum: "type_vacuum", switch: "type_switch", energy: "type_energy" };
 
-type Sub = "device" | "entity" | "alarm" | "weather" | "lock" | "status_entity" | "power_entity" | "energy_entity";
+type Sub = "device" | "entity" | "alarm" | "weather" | "lock" | "status_entity" | "power_entity" | "energy_entity" | "total" | "consumer" | "consumer_entity";
 type Dev = { id: string; name?: string | null; name_by_user?: string | null; area_id?: string | null; manufacturer?: string | null; model?: string | null };
 
 const CHARGER_DEVICE = /(wallbox|charger|cargador|evse|easee|zappi|ocpp|pulsar|recarga|wall box|ev charg|copper|commander|go-e|keba|alfen|zaptec|myenergi|ohme|v2c|circontrol)/i;
@@ -66,10 +69,15 @@ export class TerralCardConfig extends TerralSheet {
   @state() private _sub?: Sub;
   @state() private _q = "";
   @state() private _allDevices = false;
+  /** Consumer being edited (energy card); equal to the list length while adding one. */
+  @state() private _ci = 0;
 
   protected get heading() {
     if (this._sub === "entity" && this.draft.type === "climate") return t(this.hass, "climate_entity");
     if (this._sub === "entity" && this.draft.type === "switch") return t(this.hass, "sw_entity");
+    if (this._sub === "total") return t(this.hass, "en_total");
+    if (this._sub === "consumer") return t(this.hass, "en_consumer");
+    if (this._sub === "consumer_entity") return t(this.hass, "en_sensor");
     if (this.draft.type === "switch" && this._sub === "power_entity") return t(this.hass, "sw_power");
     if (this.draft.type === "switch" && this._sub === "energy_entity") return t(this.hass, "sw_energy");
     if (this._sub) return t(this.hass, ({ device: "ch_device", entity: "light_entity", alarm: "type_alarm", weather: "type_weather", lock: "ch_lock_entity", status_entity: "ch_status", power_entity: "ch_power", energy_entity: "ch_energy" } as const)[this._sub]);
@@ -82,6 +90,11 @@ export class TerralCardConfig extends TerralSheet {
   }
 
   private _back = () => {
+    if (this._sub === "consumer_entity" && this._ci < (this.draft.config.consumers ?? []).length) {
+      this._sub = "consumer";
+      this._q = "";
+      return;
+    }
     if (this._sub) {
       this._sub = undefined;
       this._q = "";
@@ -138,6 +151,7 @@ export class TerralCardConfig extends TerralSheet {
   private _defaultName(): string {
     const c = this.draft.config;
     if (this.draft.type === "alarm") return t(this.hass, "alarm");
+    if (this.draft.type === "energy") return t(this.hass, "en_title");
     const dev = c.device ? (this.hass.devices?.[c.device] as Dev | undefined) : undefined;
     return dev ? this._devName(dev) : c.entity ? this._entName(c.entity) : "";
   }
@@ -150,7 +164,9 @@ export class TerralCardConfig extends TerralSheet {
     const general = html`<section>
       <h3>${t(h, "general")}</h3>
       <div class="list">
-        ${type === "weather"
+        ${type === "energy"
+          ? this._row(t(h, "en_total"), c.sum_only ? t(h, "en_total_none") : c.entity ? this._entName(c.entity) : t(h, "choose"), "total", c.sum_only ? undefined : c.entity)
+          : type === "weather"
           ? this._weathers().length > 1
             ? this._row(t(h, "type_weather"), c.entity ? this._entName(c.entity) : t(h, "choose"), "weather")
             : nothing
@@ -204,6 +220,8 @@ export class TerralCardConfig extends TerralSheet {
       specific = this._vacuumSettings();
     } else if (type === "switch" && c.entity) {
       specific = this._switchSettings(devId);
+    } else if (type === "energy") {
+      specific = this._energySettings();
     } else if (type === "climate" && c.entity && h.states[c.entity]) {
       specific = this._climateSettings(devId);
     } else if (type === "charger" && c.entity) {
@@ -259,7 +277,7 @@ export class TerralCardConfig extends TerralSheet {
               })}>${t(h, "remove_card")}</button>`
           : nothing}
       </div>
-      <button class="cta" ?disabled=${!c.entity} @click=${() => {
+      <button class="cta" ?disabled=${!c.entity || (type === "energy" && c.sum_only && !(c.consumers ?? []).length)} @click=${() => {
         this.options.onSave(this.draft);
         this.close();
       }}>${t(h, this.options.mode === "add" ? "add" : "save")}</button>
@@ -365,6 +383,149 @@ export class TerralCardConfig extends TerralSheet {
         <p class="note" style="margin-top:8px">${t(h, "vac_card_routines_sub")}</p>
       </section>
       ${scripts.length ? html`<section><h3>${t(h, "vac_scripts")}</h3><div class="list">${scripts.map(row)}</div></section>` : nothing}`;
+  }
+
+  // ---- Home energy ----------------------------------------------------------------
+
+  private get _consumers(): Consumer[] {
+    return (this.draft.config.consumers ?? []) as Consumer[];
+  }
+
+  private _setConsumers(list: Consumer[]) {
+    const c = this.draft.config;
+    const patch: Record<string, unknown> = { consumers: list };
+    // Without a main meter the card needs some entity: the first consumer's sensor.
+    if (c.sum_only) patch.entity = list[0]?.entity ?? "none";
+    this._set(patch);
+  }
+
+  private _thumb(v: "flow" | "ring" | "bars") {
+    const cols = ["green", "blue", "amber"].map(hexOf);
+    if (v === "flow")
+      return html`<svg viewBox="0 0 64 44" width="64" height="44" aria-hidden="true"><path d="M32 9 C32 20, 12 18, 12 32" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="3.5" stroke-linecap="round"/><path d="M32 9 L32 32" stroke="rgba(255,255,255,.3)" stroke-width="2.6"/><path d="M32 9 C32 20, 52 18, 52 32" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2"/><circle cx="32" cy="8" r="5.5" fill="rgba(255,255,255,.5)"/><circle cx="12" cy="35" r="6" fill=${cols[0]}/><circle cx="32" cy="35" r="6" fill=${cols[1]}/><circle cx="52" cy="35" r="6" fill=${cols[2]}/></svg>`;
+    if (v === "ring")
+      return html`<svg viewBox="0 0 64 44" width="64" height="44" aria-hidden="true"><g transform="rotate(-90 22 22)"><circle cx="22" cy="22" r="15" fill="none" stroke=${cols[0]} stroke-width="6" stroke-dasharray="55 40"/><circle cx="22" cy="22" r="15" fill="none" stroke=${cols[1]} stroke-width="6" stroke-dasharray="22 73" stroke-dashoffset="-58"/><circle cx="22" cy="22" r="15" fill="none" stroke=${cols[2]} stroke-width="6" stroke-dasharray="11 84" stroke-dashoffset="-83"/></g><rect x="44" y="9" width="14" height="4" rx="2" fill=${cols[0]}/><rect x="44" y="20" width="14" height="4" rx="2" fill=${cols[1]}/><rect x="44" y="31" width="14" height="4" rx="2" fill=${cols[2]}/></svg>`;
+    return html`<svg viewBox="0 0 64 44" width="64" height="44" aria-hidden="true">${[40, 18, 9].map((w, i) => svg`<circle cx="7" cy=${9 + i * 13} r="4.5" fill=${cols[i]}/><rect x="16" y=${7 + i * 13} width="44" height="4.5" rx="2.2" fill="rgba(255,255,255,.15)"/><rect x="16" y=${7 + i * 13} width=${w} height="4.5" rx="2.2" fill=${cols[i]}/>`)}</svg>`;
+  }
+
+  /** Energy: view, consumers (each opens its own page), rest of the house and movement. */
+  private _energySettings() {
+    const h = this.hass;
+    const c = this.draft.config;
+    const view = c.view ?? "flow";
+    const list = this._consumers;
+    return html`
+      <section>
+        <h3>${t(h, "en_view")}</h3>
+        <div class="list"><div class="views">
+          ${(["flow", "ring", "bars"] as const).map((v) => html`<button class="vw ${view === v ? "sel" : ""}" aria-pressed=${view === v} @click=${() => this._set({ view: v === "flow" ? undefined : v })}>
+            ${this._thumb(v)}${t(h, `en_view_${v}` as StringKey)}</button>`)}
+        </div></div>
+        <p class="note" style="margin-top:8px">${t(h, "en_view_note")}</p>
+      </section>
+      <section>
+        <h3>${t(h, "en_consumers")}</h3>
+        <div class="list">
+          ${list.map((x, i) => {
+            const name = consumerName(h, x);
+            return html`<button class="li" @click=${() => {
+              this._ci = i;
+              this._sub = "consumer";
+            }}>
+              <span class="ic" style="background:${hexOf(x.color ?? CONSUMER_COLORS[i % CONSUMER_COLORS.length])}">${energyIcon(consumerIcon(x, name), 18)}</span>
+              <span class="nm">${name}<small>${x.entity}</small></span>
+              ${chevronIcon(false, 16)}
+            </button>`;
+          })}
+          <button class="li" role="switch" aria-checked=${!c.sum_only && c.rest !== false} ?disabled=${!!c.sum_only} style=${c.sum_only ? "opacity:.5" : ""}
+            @click=${() => this._set({ rest: c.rest === false ? undefined : false })}>
+            <span class="ic" style="background:${hexOf("amber")}">${energyIcon("home", 18)}</span>
+            <span class="nm">${t(h, "en_rest")}<small>${t(h, c.sum_only ? "en_rest_off" : "en_rest_sub")}</small></span>
+            <span class="tog ${!c.sum_only && c.rest !== false ? "on" : ""}"></span>
+          </button>
+          <button class="li addc" @click=${() => {
+            this._ci = list.length;
+            this._sub = "consumer_entity";
+            this._q = "";
+          }}><span class="ic dash">${plusIcon(18)}</span><span class="nm">${t(h, "en_add")}</span></button>
+        </div>
+        <p class="note" style="margin-top:8px">${t(h, "en_consumers_note")}</p>
+      </section>
+      <section>
+        <h3>${t(h, "window_section")}</h3>
+        <div class="list">
+          <button class="li" role="switch" aria-checked=${c.animate !== false} @click=${() => this._set({ animate: c.animate === false ? undefined : false })}>
+            <span class="nm">${t(h, "en_animate")}<small>${t(h, "en_animate_sub")}</small></span><span class="tog ${c.animate !== false ? "on" : ""}"></span>
+          </button>
+        </div>
+      </section>`;
+  }
+
+  /** One consumer: sensor, name, colour, icon, order, remove. */
+  private _consumerPage() {
+    const h = this.hass;
+    const list = this._consumers;
+    const i = this._ci;
+    const x = list[i];
+    if (!x) return html`<div class="scroll"></div>`;
+    const name = consumerName(h, x);
+    const color = x.color ?? CONSUMER_COLORS[i % CONSUMER_COLORS.length];
+    const icon = consumerIcon(x, name);
+    const upd = (patch: Partial<Consumer>) => {
+      const next = list.map((y, k) => (k === i ? { ...y, ...patch } : y));
+      for (const y of next) for (const key of Object.keys(y) as (keyof Consumer)[]) if (y[key] === undefined || y[key] === "") delete y[key];
+      this._setConsumers(next);
+    };
+    const move = (d: -1 | 1) => {
+      const j = i + d;
+      if (j < 0 || j >= list.length) return;
+      const next = [...list];
+      [next[i], next[j]] = [next[j], next[i]];
+      this._setConsumers(next);
+      this._ci = j;
+    };
+    return html`<div class="scroll">
+      <section>
+        <div class="list">
+          ${this._row(t(h, "en_sensor"), this._entName(x.entity), "consumer_entity", x.entity)}
+          <label class="li"><span class="nm">${t(h, "name_label")}</span>
+            <input class="txt" .value=${x.name ?? ""} placeholder=${String(h.states[x.entity]?.attributes.friendly_name ?? "")} @input=${(ev: Event) => upd({ name: (ev.target as HTMLInputElement).value })} /></label>
+        </div>
+      </section>
+      <section>
+        <h3>${t(h, "en_color")}</h3>
+        <div class="list"><div class="sws">
+          ${SWITCH_COLORS.map((col) => html`<button class="sw ${color === col.key ? "sel" : ""}" aria-label=${t(h, col.name)} @click=${() => upd({ color: col.key })}>
+            <i style="background:${switchTint(col.key).bg}"><b style="background:${col.hex}">${color === col.key ? checkIcon(16) : nothing}</b></i><span>${t(h, col.name)}</span></button>`)}
+        </div></div>
+      </section>
+      <section>
+        <h3>${t(h, "sw_icon")}</h3>
+        <div class="list"><div class="igrid">
+          ${ENERGY_ICONS.map((k) => html`<button class="gi ${icon === k ? "sel" : ""}" aria-label=${k} @click=${() => upd({ icon: k })}>${energyIcon(k, 22)}</button>`)}
+        </div></div>
+      </section>
+      <section>
+        <div class="list">
+          <button class="li" ?disabled=${i === 0} style=${i === 0 ? "opacity:.45" : ""} @click=${() => move(-1)}><span class="nm">${t(h, "en_move_up")}</span></button>
+          <button class="li" ?disabled=${i === list.length - 1} style=${i === list.length - 1 ? "opacity:.45" : ""} @click=${() => move(1)}><span class="nm">${t(h, "en_move_down")}</span></button>
+        </div>
+      </section>
+      <button class="remove" @click=${() => {
+        this._setConsumers(list.filter((_, k) => k !== i));
+        this._sub = undefined;
+      }}>${t(h, "en_remove")}</button>
+    </div>`;
+  }
+
+  /** Power sensors for the main meter or a consumer (the ones already used last). */
+  private _powerList(): string[] {
+    const h = this.hass;
+    const used = new Set(this._consumers.map((x) => x.entity));
+    return Object.keys(h.states)
+      .filter((id) => isPower(h, id) && this._visible(id) && this._match(this._entName(id), id))
+      .sort((a, b) => Number(used.has(a)) - Number(used.has(b)) || this._entName(a).localeCompare(this._entName(b)))
+      .slice(0, 80);
   }
 
   /** Switch: colour (with a preview), 2/2 view, icon and consumption sensors. */
@@ -543,6 +704,25 @@ export class TerralCardConfig extends TerralSheet {
     const { config: c } = this.draft;
     const sub = this._sub!;
     if (sub === "device") return html`<div class="scroll">${this._devicePage()}</div>`;
+    if (sub === "consumer") return this._consumerPage();
+    if (sub === "total") {
+      return html`<div class="scroll">${this._search()}
+        <div class="list">
+          ${this._opt(t(h, "en_total_none"), t(h, "en_total_none_sub"), !!c.sum_only, () =>
+            this._set({ sum_only: true, entity: this._consumers[0]?.entity ?? "none" }))}
+          ${this._powerList().map((id) => this._opt(this._entName(id), id, !c.sum_only && c.entity === id, () => this._set({ sum_only: undefined, entity: id })))}
+        </div></div>`;
+    }
+    if (sub === "consumer_entity") {
+      const i = this._ci;
+      const list = this._consumers;
+      return html`<div class="scroll">${this._search()}
+        <div class="list">${this._powerList().filter((id) => c.sum_only || id !== c.entity).map((id) => this._opt(this._entName(id), id, list[i]?.entity === id, () => {
+          if (i < list.length) this._setConsumers(list.map((y, k) => (k === i ? { ...y, entity: id } : y)));
+          else this._setConsumers([...list, { entity: id, color: CONSUMER_COLORS[list.length % CONSUMER_COLORS.length] }]);
+          queueMicrotask(() => (this._sub = "consumer"));
+        }))}</div></div>`;
+    }
     if (sub === "weather") {
       const list = this._weathers();
       return html`<div class="scroll">${this._group(t(h, "type_weather"), list.map((id) =>
@@ -603,6 +783,10 @@ export class TerralCardConfig extends TerralSheet {
     if (this.draft.type === "weather" && !this.draft.config.entity && this.hass) {
       const first = this._weathers()[0];
       if (first) this.draft = { ...this.draft, config: { ...this.draft.config, entity: first } };
+    }
+    if (this.draft.type === "energy" && !this.draft.config.entity && this.hass) {
+      const guess = guessTotal(this.hass);
+      if (guess) this.draft = { ...this.draft, config: { ...this.draft.config, entity: guess } };
     }
     if (this.draft.type === "alarm" && !this.draft.config.entity && this.hass) {
       const first = this._alarms()[0];
@@ -703,6 +887,41 @@ export class TerralCardConfig extends TerralSheet {
       }
       .pc.off small {
         color: rgba(255, 255, 255, 0.65);
+      }
+      .views {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px;
+      }
+      .vw {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 6px 10px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.06);
+        font-size: 13px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.8);
+        border: 2px solid transparent;
+      }
+      .vw.sel {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: #fff;
+        color: #fff;
+      }
+      .ic.dash {
+        background: none;
+        border: 2px dashed rgba(255, 255, 255, 0.45);
+        box-sizing: border-box;
+      }
+      .addc .nm {
+        font-weight: 600;
+      }
+      .li .ic {
+        color: #fff;
       }
       .igrid {
         display: grid;
@@ -1051,7 +1270,7 @@ export function openCardSettings(card: HTMLElement, hass: HomeAssistant, type: C
 
 /** Default draft when a card type is picked in "Añadir tarjeta". */
 export function newDraft(type: CardType): CardDraft {
-  return { type, config: {}, w: type === "light" ? 1 : 2, h: 2 };
+  return { type, config: type === "energy" ? { consumers: [] } : {}, w: type === "light" ? 1 : 2, h: type === "energy" ? 4 : 2 };
   // Climate starts as 2/2 too; the corner gives 4/2 with the big dial.
 }
 

@@ -6,6 +6,8 @@ import type { HomeAssistant } from "../ha-types";
 import { t, type StringKey } from "../i18n";
 import { bulbIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon, vacuumIcon } from "../shared/icons";
 import { switchIcon } from "../switch/switch-look";
+import { energyIcon } from "../energy/energy-views";
+import { isPower } from "../energy/energy-model";
 import { TerralSheet } from "../shared/terral-sheet";
 import type { CardType } from "./terral-card-config";
 import { weatherIcon } from "../weather/weather-look";
@@ -22,6 +24,7 @@ const TYPES: { type: CardType; name: StringKey; desc: StringKey; icon: () => unk
   { type: "weather", name: "type_weather", desc: "type_weather_desc", icon: () => weatherIcon("partlycloudy", 26), color: "linear-gradient(180deg,#3a8ee6,#7cc0f5)" },
   { type: "vacuum", name: "type_vacuum", desc: "type_vacuum_desc", icon: () => vacuumIcon(21), color: "#22a587" },
   { type: "switch", name: "type_switch", desc: "type_switch_desc", icon: () => switchIcon("plug", true, 20), color: "#ff7a2f" },
+  { type: "energy", name: "type_energy", desc: "type_energy_desc", icon: () => energyIcon("bolt", 20), color: "#ffb020" },
 ];
 const SOON: { name: StringKey; icon: () => unknown }[] = [
   { name: "type_cover", icon: () => blindIcon() },
@@ -53,7 +56,9 @@ export class TerralAddSheet extends TerralSheet {
               ? "vacuum_missing"
               : type === "switch" && !Object.keys(this.hass.states).some((id) => id.startsWith("switch.") || id.startsWith("input_boolean."))
                 ? "switch_missing"
-                : undefined;
+                : type === "energy" && !Object.keys(this.hass.states).some((id) => isPower(this.hass, id))
+                  ? "energy_missing"
+                  : undefined;
     const soon = SOON.filter((x) => match(x.name));
     return html`
       <label class="search">

@@ -33,7 +33,7 @@ import { VERSION } from "../version";
 
 export interface TerralCard {
   id: string;
-  type: "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch";
+  type: "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch" | "energy";
   entity: string;
   w: 1 | 2;
   h: 1 | 2 | 4;
@@ -104,10 +104,11 @@ const CARD_TAGS: Record<string, string> = {
   weather: "terral-home-weather",
   vacuum: "terral-home-vacuum",
   switch: "terral-home-switch",
+  energy: "terral-home-energy",
 };
 
 /** Settings a card may store in the layout through "terral-card-config". */
-const CONFIG_KEYS = ["entity", "device", "name", "invert", "use_light_color", "status_entity", "power_entity", "energy_entity", "max_power", "min_temp", "max_temp", "temp_step", "mode_rules", "show_swing", "forecast_2x2", "animate", "show_details", "forecast_days", "routines", "icon", "color", "style"];
+const CONFIG_KEYS = ["entity", "device", "name", "invert", "use_light_color", "status_entity", "power_entity", "energy_entity", "max_power", "min_temp", "max_temp", "temp_step", "mode_rules", "show_swing", "forecast_2x2", "animate", "show_details", "forecast_days", "routines", "icon", "color", "style", "sum_only", "consumers", "rest", "view", "animate"];
 
 // The Companion app paints the notch and home-bar areas with ONE solid colour
 // (the theme's primary background). We give it EDGE and fade the panel's

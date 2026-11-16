@@ -2,6 +2,12 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.16.0 — 2026-11-16
+- **Home consumption card** (`terral-home-energy`): the main meter split into the consumers you choose and "rest of the house". Sizes 1/1, 2/1, 2/2 and 4/2.
+- Three views chosen in its settings — **flow** (dots from the grid to each consumer), **ring** (a band of light running along each segment) and **bars** (running stripes) — with movement faster the more each one uses; it can be turned off.
+- Window: power now, today per hour stacked by consumer, each consumer today and the last 7 days (from Home Assistant's long-term statistics).
+- Settings: main meter (or none: the total is the sum of the consumers), consumers with their sensor, name, colour and icon (add, remove, reorder), rest of the house and movement.
+
 ## 0.15.4 — 2026-11-16
 - Pages: the round **+** really is centred now (the icon is placed in the middle of the circle instead of relying on the button layout).
 

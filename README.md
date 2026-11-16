@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.15.4). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.16.0). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -29,7 +29,7 @@ Terral Home gives Home Assistant a clean, glass-style home screen inspired by mo
 - **Several dashboards**, each its own entry in Home Assistant's sidebar (name and icon of your choice), so each device can open its own one.
 - **Terral Home page** in the sidebar: full screen, no Home Assistant toolbar, with the "crepúsculo" background and the phone's status and home bars blended in.
 - **Same card size on every screen**: columns are about as wide as on a phone, every section is 2 columns wide, and tablets and computers place more sections side by side (each in the shortest column) instead of stretching the cards. Card sizes (height/width): **1/1, 2/1, 2/2 and 4/2**.
-- **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum, switch), then choose the device and name.
+- **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum, switch, home consumption), then choose the device and name.
 - **Arrange by touch**: long-press a card to move it, drag the bottom-right corner to resize, remove with **−**.
 - **Pages** inside a dashboard, chosen with pills under the title, each with its own favourites and sections.
 - **Main dashboard per user**: open it at sign-in, and optionally show only that dashboard in the user's sidebar.
@@ -140,6 +140,20 @@ For a robot that vacuums and/or mops. Made for [Roborock](https://www.home-assis
 
 How it reads Roborock: battery, progress, area, time, current room and error come from the sensors on the robot's device; water and mop mode are its `select` entities; Roborock has no "mode" entity, so *mop only* is suction `off` and *vacuum only* is water `off`; each routine of the Roborock app is a `button` on the device; rooms come from the `roborock.get_maps` action and a room clean is sent as `app_segment_clean`.
 
+### Home consumption
+
+Where the electricity of the house is going right now: the main meter split into the consumers you choose (car charger, air conditioning, water heater…) and **rest of the house** (meter − consumers).
+
+- **Sizes**: 1/1, 2/1, 2/2 and 4/2. A tap opens the window.
+- **Three views**, chosen in the settings, the same on every size and in the window:
+  - **Flow**: the grid on top and dots running down a cable to each consumer; thicker cables and faster, more dots the more it uses.
+  - **Ring**: a donut split by consumer with the total in the middle; a band of light runs along each segment, faster the more it uses.
+  - **Bars**: one bar per consumer with its kW and share; the stripes run faster the more it uses.
+- The 4/2 also shows today's kWh per consumer as a coloured bar.
+- **Window**: power now (in the chosen view), today per hour stacked by consumer, each consumer today (kWh and share) and the last 7 days.
+- **Settings**: the main meter (a power sensor; or "no main meter", then the total is the sum of the consumers and there is no "rest"), the view, the **consumers** (each with its power sensor, name, colour and icon; add, remove, move up / down), rest of the house on/off and the movement on/off.
+- History comes from Home Assistant's long-term statistics (hourly mean power), so a week of a meter that reports every few seconds stays light; the current hour comes from the state history.
+
 ### Switch
 
 For anything on a switch: a water heater, a bug zapper, a plug, a fan… (`switch`, `input_boolean`; `light` and `fan` entities also work from YAML).
@@ -220,6 +234,23 @@ power_entity: sensor.water_heater_power    # optional: found on the same device 
 energy_entity: sensor.water_heater_energy  # optional
 ```
 
+```yaml
+type: custom:terral-home-energy
+entity: sensor.house_power           # the main meter (power, W or kW)
+view: flow                           # flow | ring | bars
+consumers:
+  - entity: sensor.charger_power
+    name: Car charger
+    icon: car                        # car | snow | home | boiler | washer | heater | … (the switch icons)
+    color: green                     # amber | orange | red | pink | violet | blue | teal | green
+  - entity: sensor.air_conditioning_power
+    name: Air conditioning
+    icon: snow
+    color: blue
+rest: true                           # rest of the house = meter − consumers
+animate: true
+```
+
 ## Privacy
 
 Everything stays in your Home Assistant. The layout is saved in Home Assistant's storage (`.storage/terral_home.layout`); the cards only read entity states and history and call Home Assistant services. Terral Home sends nothing to outside services.
@@ -252,7 +283,8 @@ npm run build      # type-checks and writes custom_components/terral_home/www/te
 Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto cristal, inspirada en las apps de casa de los móviles: una página propia a pantalla completa, tarjetas que añades y colocas con el dedo y una ventana para cada dispositivo.
 
 - **Instalación**: en HACS añade este repositorio como **repositorio personalizado** de tipo **Integración**, instala **Terral Home**, reinicia y añade la integración desde **Ajustes → Dispositivos y servicios**. Aparecerá **Terral Home** en la barra lateral.
-- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo, robot aspirador, interruptor) → dispositivo y nombre → **Añadir**.
+- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo, robot aspirador, interruptor, consumo de la casa) → dispositivo y nombre → **Añadir**.
+- **Consumo de la casa**: el contador general repartido entre los consumidores que elijas (cargador, aire…) y el **resto de la casa**. Tres vistas a elegir en los ajustes: **Flujo** (puntos que van de la red a cada consumidor), **Anillo** y **Barras**, con movimiento más rápido cuanto más gasta cada uno. La ventana tiene el consumo de hoy por horas, por consumidor y de los últimos 7 días.
 - **Interruptor** (termo, matamosquitos, enchufe…): el icono lo enciende y apaga; en los ajustes eliges el **icono** (15), el **color** al encender (8: fuerte en el icono y suave de fondo) y qué muestra la **2/2** (A · Datos, B · Consumo o C · Línea del día). La ventana tiene el día de hoy, el consumo de los últimos 7 días y el **registro** de encendidos y apagados con quién lo hizo. Sin medidor de consumo muestra horas encendido.
 - **Robot aspirador** (Roborock u otros): en espera, la 2/2 muestra tus 3 rutinas principales (se eligen en los ajustes) y el icono abre todas; limpiando, el icono pausa y se ve el progreso; atascado, sale una **!** roja sobre el icono. La batería va en el texto. En la ventana: aspirar / fregar / ambos, potencia, agua, modo de mopa, habitaciones y rutinas; lo que no aplica se apaga.
 - **Ordenar**: pulsación larga en una tarjeta para entrar en modo mover; desliza para desplazarte y deja el dedo quieto un instante sobre una tarjeta para agarrarla. La esquina inferior derecha cambia el tamaño y **−** la quita.

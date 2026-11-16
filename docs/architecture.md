@@ -16,7 +16,7 @@ custom_components/terral_home/   Home Assistant integration (Python)
 frontend/                        frontend source (TypeScript + Lit + Vite)
   src/index.ts                   entry: registers every card and the panel
   src/panel/                     the Terral Home page and its sheets
-  src/light|alarm|charger|climate|weather|vacuum|switch/   one folder per card
+  src/light|alarm|charger|climate|weather|vacuum|switch|energy/   one folder per card
   src/shared/                    sheet base, popover menu, slider, icons, scroll lock, backgrounds
   src/i18n.ts                    Spanish / English strings
   src/ha-types.ts                the small part of HA's frontend types we use
@@ -58,7 +58,7 @@ docs/                            this file and notes on Lovelace internals
 }
 ```
 
-- `type`: `light`, `alarm`, `charger`, `climate`, `weather`, `vacuum` or `switch`.
+- `type`: `light`, `alarm`, `charger`, `climate`, `weather`, `vacuum`, `switch` or `energy`.
 - `w` ∈ {1, 2}, `h` ∈ {1, 2, 4}. Sizes are named height/width: 1/1, 2/1 (`w:1,h:2`), 2/2, 4/2 (`w:2,h:4`).
 - Limits: 300 cards, 50 sections. The schema allows extra keys on cards and sections.
 
@@ -130,6 +130,7 @@ Events a card dispatches (`bubbles` + `composed`):
 - **Charger** (`charger/`): `isLocked` / `setLocked` handle switches, locks and `input_boolean` with `invert`. Status, power and energy sensors are auto-detected on the same device. Charge history is rebuilt from the power sensor's history (`history/history_during_period`): sessions above 0.05 kW, gaps under 15 min merged.
 - **Climate** (`climate/`): modes from `hvac_modes` without `off`; what each mode shows comes from `DEFAULT_RULES`, the card's `mode_rules` and what the unit reports. Temperature changes are sent after a 650 ms pause.
 - **Weather** (`weather/`): forecasts through `weather/subscribe_forecast`, shared between cards per entity and type; night comes from `sun.sun`.
+- **Home consumption** (`energy/`): `energy-model.ts` reads the live power of the main meter (`entity`, unless `sum_only`) and of each consumer (`consumers: [{entity, name, icon, color}]`), and works out "rest of the house" = meter − consumers (`rest`, default on). `loadEnergy` gets kWh per hour from `recorder/statistics_during_period` (period `hour`, type `mean`, units kW, so mean kW × 1 h = kWh) and fills the hours statistics don't cover yet (the current one, or sensors without `state_class`) by integrating `history/history_during_period`; the card asks for today (shared, every 5 minutes), the window for 7 days. `energy-views.ts` draws the three views (`flow`, `ring`, `bars`) for each size as SVG: flow dots are `animateMotion` along the cables, the ring's light bands are an animated `stroke-dashoffset` clipped to each segment, the bars' stripes are a CSS background animation; speed grows with the power, `animate: false` and `prefers-reduced-motion` stop them. Card settings keys: `sum_only`, `consumers`, `rest`, `view`, `animate`.
 - **Switch** (`switch/`): `switch-look.ts` holds the 15 icons (`SWITCH_ICONS`, `guessIcon` from the name) and the 8 colours (`SWITCH_COLORS`; `switchTint` mixes the colour with white for the background and with near-black for the text, amber is the light card's exact tint). `switch-model.ts` finds the power / energy sensors on the same device (`meterOf`, overridable with `power_entity` / `energy_entity`, `"none"` to skip), and `loadUsage` reads `history/history_during_period` of the switch and the meter: on periods, kWh per hour of today and per day (power integrated as a step function, or positive steps of an energy counter), time on. The card asks only for today (`todayUsage`, shared between cards of the same switch, refreshed on every change and every 5 minutes); the window asks for 7 days and `logbook/get_events` for who switched it (`context_event_type` automation / script with `context_name`, or `context_user_id`, "you" when it's the signed-in user). Card settings keys: `icon`, `color`, `style` (`a` | `b` | `c`, default `c`).
 - **Robot vacuum** (`vacuum/`): `vacuum-model.ts` finds the robot's sensors and selects on the same device (by `translation_key`, then by entity id): battery (`device_class: battery`), cleaning progress / area / time, current room, error, mop intensity, mop mode and selected map. "What to do" has no entity in Roborock: mop only = fan speed `off`, vacuum only = mop intensity `off`; the last non-off values are remembered so "both" can restore them. Routines are the device's `button` entities without an entity category (the reset buttons have one) plus the scripts / buttons listed in the card's `routines`; the card shows the first 3 of `routines` (or of the device's). Rooms are read once per robot and map with `call_service` `roborock.get_maps` (`return_response`) and cleaned with `vacuum.send_command` `app_segment_clean`. The card redraws only when the robot, one of those entities or a favourite routine changes.
 

@@ -7,6 +7,7 @@ import "./climate/terral-climate-card";
 import "./weather/terral-weather-card";
 import "./vacuum/terral-vacuum-card";
 import "./switch/terral-switch-card";
+import "./energy/terral-energy-card";
 import "./panel/terral-home-panel";
 import type { HomeAssistant } from "./ha-types";
 
@@ -100,6 +101,16 @@ if (!w.customCards.some((c) => c.type === "terral-home-switch")) {
     documentationURL: "https://github.com/nexaproject-repository/terral-home",
     getEntitySuggestion: (_hass, entityId) =>
       entityId.startsWith("switch.") || entityId.startsWith("input_boolean.") ? { config: { type: "custom:terral-home-switch", entity: entityId } } : null,
+  });
+}
+
+if (!w.customCards.some((c) => c.type === "terral-home-energy")) {
+  w.customCards.push({
+    type: "terral-home-energy",
+    name: "Terral · Energía",
+    description: "Consumo de la casa repartido por consumidores, con animación / Terral Home energy flow",
+    preview: true,
+    documentationURL: "https://github.com/nexaproject-repository/terral-home",
   });
 }
 
