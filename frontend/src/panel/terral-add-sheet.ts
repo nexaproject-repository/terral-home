@@ -8,6 +8,7 @@ import { bulbIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon, vacuumIco
 import { switchIcon } from "../switch/switch-look";
 import { energyIcon } from "../energy/energy-views";
 import { isMeter } from "../energy/energy-model";
+import { isContact, kindIcon } from "../contact/contact-model";
 import { TerralSheet } from "../shared/terral-sheet";
 import type { CardType } from "./terral-card-config";
 import { weatherIcon } from "../weather/weather-look";
@@ -25,6 +26,7 @@ const TYPES: { type: CardType; name: StringKey; desc: StringKey; icon: () => unk
   { type: "vacuum", name: "type_vacuum", desc: "type_vacuum_desc", icon: () => vacuumIcon(21), color: "#22a587" },
   { type: "switch", name: "type_switch", desc: "type_switch_desc", icon: () => switchIcon("plug", true, 20), color: "#ff7a2f" },
   { type: "energy", name: "type_energy", desc: "type_energy_desc", icon: () => energyIcon("bolt", 20), color: "#ffb020" },
+  { type: "contact", name: "type_contact", desc: "type_contact_desc", icon: () => kindIcon("balcony", false, 20), color: "#ff7a2f" },
 ];
 const SOON: { name: StringKey; icon: () => unknown }[] = [
   { name: "type_cover", icon: () => blindIcon() },
@@ -58,7 +60,9 @@ export class TerralAddSheet extends TerralSheet {
                 ? "switch_missing"
                 : type === "energy" && !Object.keys(this.hass.states).some((id) => isMeter(this.hass, id))
                   ? "energy_missing"
-                  : undefined;
+                  : type === "contact" && !Object.keys(this.hass.states).some((id) => isContact(this.hass, id))
+                    ? "contact_missing"
+                    : undefined;
     const soon = SOON.filter((x) => match(x.name));
     return html`
       <label class="search">

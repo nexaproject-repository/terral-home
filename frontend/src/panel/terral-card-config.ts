@@ -6,7 +6,8 @@
 //             max power; climate limits, steps, per-mode controls, swing;
 //             weather forecast options; robot vacuum routines on the card;
 //             switch colour, 2/2 view, icon and consumption sensors;
-//             home energy view, main meter and consumers.
+//             home energy view, main meter and consumers; door / window kind,
+//             alerts, what to show and the group of sensors.
 // The size is not chosen here: new cards get a default and the corner resizes.
 // In "edit" mode it reports through terral-card-config / terral-card-remove
 // events (see openCardSettings), which the Terral panel stores in the layout.
@@ -40,8 +41,9 @@ import { SWITCH_COLORS, SWITCH_ICONS, guessIcon, switchIcon, switchTint } from "
 import { meterOf } from "../switch/switch-model";
 import { CONSUMER_COLORS, type Consumer, consumerIcon, consumerName, guessTotal, isEnergy, isMeter } from "../energy/energy-model";
 import { ENERGY_ICONS, energyIcon, hexOf } from "../energy/energy-views";
+import { type ContactKind, isContact, kindIcon, kindOf } from "../contact/contact-model";
 
-export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch" | "energy";
+export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch" | "energy" | "contact";
 export interface CardDraft {
   type: CardType;
   config: Record<string, any>;
@@ -55,9 +57,9 @@ export interface CardConfigOptions {
   onRemove?: () => void;
 }
 
-const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather", vacuum: "type_vacuum", switch: "type_switch", energy: "type_energy" };
+const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather", vacuum: "type_vacuum", switch: "type_switch", energy: "type_energy", contact: "type_contact" };
 
-type Sub = "device" | "entity" | "alarm" | "weather" | "lock" | "status_entity" | "power_entity" | "energy_entity" | "total" | "consumer" | "consumer_entity";
+type Sub = "device" | "entity" | "alarm" | "weather" | "lock" | "status_entity" | "power_entity" | "energy_entity" | "total" | "consumer" | "consumer_entity" | "group_entity";
 type Dev = { id: string; name?: string | null; name_by_user?: string | null; area_id?: string | null; manufacturer?: string | null; model?: string | null };
 
 const CHARGER_DEVICE = /(wallbox|charger|cargador|evse|easee|zappi|ocpp|pulsar|recarga|wall box|ev charg|copper|commander|go-e|keba|alfen|zaptec|myenergi|ohme|v2c|circontrol)/i;
@@ -76,6 +78,8 @@ export class TerralCardConfig extends TerralSheet {
     if (this._sub === "entity" && this.draft.type === "climate") return t(this.hass, "climate_entity");
     if (this._sub === "entity" && this.draft.type === "switch") return t(this.hass, "sw_entity");
     if (this._sub === "total") return t(this.hass, "en_total");
+    if (this._sub === "entity" && this.draft.type === "contact") return t(this.hass, "ct_sensor_entity");
+    if (this._sub === "group_entity") return t(this.hass, "ct_group_add");
     if (this._sub === "consumer") return t(this.hass, "en_consumer");
     if (this._sub === "consumer_entity") return t(this.hass, "en_sensor");
     if (this.draft.type === "switch" && this._sub === "power_entity") return t(this.hass, "sw_power");
@@ -222,6 +226,8 @@ export class TerralCardConfig extends TerralSheet {
       specific = this._switchSettings(devId);
     } else if (type === "energy") {
       specific = this._energySettings();
+    } else if (type === "contact" && c.entity) {
+      specific = this._contactSettings(devId);
     } else if (type === "climate" && c.entity && h.states[c.entity]) {
       specific = this._climateSettings(devId);
     } else if (type === "charger" && c.entity) {
@@ -383,6 +389,58 @@ export class TerralCardConfig extends TerralSheet {
         <p class="note" style="margin-top:8px">${t(h, "vac_card_routines_sub")}</p>
       </section>
       ${scripts.length ? html`<section><h3>${t(h, "vac_scripts")}</h3><div class="list">${scripts.map(row)}</div></section>` : nothing}`;
+  }
+
+  // ---- Doors and windows ----------------------------------------------------------
+
+  private _contactSettings(devId?: string) {
+    const h = this.hass;
+    const c = this.draft.config;
+    const kind = kindOf(h, { entity: c.entity, kind: c.kind, name: c.name });
+    const ents = devId ? this._entitiesOf(devId, (id) => isContact(h, id)) : [];
+    const mins = c.alert_minutes ?? 30;
+    const group: string[] = c.group ?? [];
+    const tog = (key: string, label: string, sub?: string) => html`<button class="li" role="switch" aria-checked=${c[key] !== false}
+      @click=${() => this._set({ [key]: c[key] === false ? undefined : false })}>
+      <span class="nm">${label}${sub ? html`<small>${sub}</small>` : nothing}</span><span class="tog ${c[key] !== false ? "on" : ""}"></span></button>`;
+    return html`
+      ${ents.length > 1 ? html`<section><div class="list">${this._row(t(h, "ct_sensor_entity"), this._entName(c.entity), "entity", c.entity)}</div></section>` : nothing}
+      <section>
+        <h3>${t(h, "ct_kind")}</h3>
+        <div class="list"><div class="views four">
+          ${(["door", "window", "balcony", "garage"] as ContactKind[]).map((k) => html`<button class="vw ${kind === k ? "sel" : ""}" aria-pressed=${kind === k} @click=${() => this._set({ kind: k })}>
+            ${kindIcon(k, false, 26)}${t(h, `ct_kind_${k}` as StringKey)}</button>`)}
+        </div></div>
+      </section>
+      <section>
+        <h3>${t(h, "ct_alerts")}</h3>
+        <div class="list">
+          <div class="li"><span class="nm">${t(h, "ct_alert_after")}<small>${t(h, "ct_alert_after_sub")}</small></span>
+            <span class="seg">${[15, 30, 60, 0].map((m) => html`<button class=${mins === m ? "sel" : ""} @click=${() => this._set({ alert_minutes: m === 30 ? undefined : m })}>${m ? m : t(h, "ct_never")}</button>`)}</span>
+          </div>
+          ${tog("alarm_warn", t(h, "ct_alarm_warn"), t(h, "ct_alarm_warn_sub"))}
+          ${tog("tamper", t(h, "ct_tamper_warn"), t(h, "ct_tamper_warn_sub"))}
+        </div>
+      </section>
+      <section>
+        <h3>${t(h, "ct_show")}</h3>
+        <div class="list">${tog("show_temp", t(h, "ct_show_temp"))}${tog("show_battery", t(h, "ct_show_battery"))}</div>
+      </section>
+      <section>
+        <h3>${t(h, "ct_group")}</h3>
+        <div class="list">
+          ${group.map((id) => html`<div class="li">
+            <span class="ic">${kindIcon(kindOf(h, { entity: id }), false, 18)}</span>
+            <span class="nm">${this._entName(id)}<small>${id}</small></span>
+            <button class="x" aria-label=${t(h, "ct_remove")} @click=${() => this._set({ group: group.filter((x) => x !== id).length ? group.filter((x) => x !== id) : undefined })}>×</button>
+          </div>`)}
+          <button class="li addc" @click=${() => {
+            this._sub = "group_entity";
+            this._q = "";
+          }}><span class="ic dash">${plusIcon(18)}</span><span class="nm">${t(h, "ct_group_add")}</span></button>
+        </div>
+        <p class="note" style="margin-top:8px">${t(h, "ct_group_note")}</p>
+      </section>`;
   }
 
   // ---- Home energy ----------------------------------------------------------------
@@ -649,6 +707,19 @@ export class TerralCardConfig extends TerralSheet {
           this._opt(this._devName(x.d), x.d.model ?? undefined, cur === x.d.id, () => this._set({ device: x.d.id, entity: x.ents[0], name: this._devName(x.d), routines: undefined }), vacuumIcon(20)))}
         ${this._group(t(h, "other_vacuums"), loose.map((id) => this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id, device: undefined, name: this._entName(id), routines: undefined }), vacuumIcon(20))))}`;
     }
+    if (type === "contact") {
+      const devs = this._devices
+        .map((d) => ({ d, ents: this._entitiesOf(d.id, (id) => isContact(h, id)) }))
+        .filter((x) => x.ents.length && this._match(this._devName(x.d), ...x.ents.map(this._entName)))
+        .sort((a, b) => this._devName(a.d).localeCompare(this._devName(b.d)));
+      const loose = Object.keys(h.states).filter((id) => isContact(h, id) && this._visible(id) && !this._deviceOf(id) && this._match(this._entName(id), id));
+      return html`${this._search()}
+        ${this._byArea(devs, (x) => x.d.area_id, (x) =>
+          this._opt(this._devName(x.d), x.d.model ?? undefined, cur === x.d.id, () => this._set({ device: x.d.id, entity: x.ents[0], name: this._devName(x.d), kind: undefined }),
+            kindIcon(kindOf(h, { entity: x.ents[0], name: this._devName(x.d) }), false, 20)))}
+        ${this._group(t(h, "other_contacts"), loose.map((id) => this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id, device: undefined, name: this._entName(id), kind: undefined }),
+          kindIcon(kindOf(h, { entity: id }), false, 20))))}`;
+    }
     if (type === "switch") {
       const isSw = (id: string) => /^(switch|input_boolean)\./.test(id);
       const devs = this._devices
@@ -705,6 +776,15 @@ export class TerralCardConfig extends TerralSheet {
     const sub = this._sub!;
     if (sub === "device") return html`<div class="scroll">${this._devicePage()}</div>`;
     if (sub === "consumer") return this._consumerPage();
+    if (sub === "group_entity") {
+      const group: string[] = c.group ?? [];
+      const list = Object.keys(h.states)
+        .filter((id) => isContact(h, id) && id !== c.entity && !group.includes(id) && this._visible(id) && this._match(this._entName(id), id))
+        .sort((a, b) => this._entName(a).localeCompare(this._entName(b)));
+      return html`<div class="scroll">${this._search()}<div class="list">
+        ${list.map((id) => this._opt(this._entName(id), id, false, () => this._set({ group: [...group, id] }), kindIcon(kindOf(h, { entity: id }), false, 20)))}
+      </div></div>`;
+    }
     if (sub === "total") {
       return html`<div class="scroll">${this._search()}
         <div class="list">
@@ -737,7 +817,7 @@ export class TerralCardConfig extends TerralSheet {
     const devId = c.device ?? this._deviceOf(c.entity);
     if (sub === "entity") {
       const dom = this.draft.type === "climate" ? "climate." : "light.";
-      const test = this.draft.type === "switch" ? (id: string) => /^(switch|input_boolean)\./.test(id) : (id: string) => id.startsWith(dom);
+      const test = this.draft.type === "switch" ? (id: string) => /^(switch|input_boolean)\./.test(id) : this.draft.type === "contact" ? (id: string) => isContact(h, id) : (id: string) => id.startsWith(dom);
       const list = devId ? this._entitiesOf(devId, test) : [];
       return html`<div class="scroll">${this._group(t(h, "light_entity"), list.map((id) => this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id }))))}</div>`;
     }
@@ -906,6 +986,18 @@ export class TerralCardConfig extends TerralSheet {
         font-weight: 600;
         color: rgba(255, 255, 255, 0.8);
         border: 2px solid transparent;
+      }
+      .views.four {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .x {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        font-size: 18px;
+        line-height: 1;
+        flex: none;
       }
       .vw.sel {
         background: rgba(255, 255, 255, 0.14);

@@ -2,6 +2,11 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.17.0 — 2026-11-16
+- **Doors and windows card** (`terral-home-contact`): closed (glass), open (orange, with the time), open too long or open with the alarm armed (red, "!", time counting), tampered or knocked (red "!" even closed). Door, window, balcony door or garage icons.
+- One sensor (1/1, 2/1, 2/2 with today's open periods, temperature, battery and openings) or a **group** of sensors (up to 4/2, open ones first).
+- Window: today's timeline and figures, the openings of the last 7 days and the sensor's data (temperature, vibration, tamper, battery, Z-Wave status).
+
 ## 0.16.3 — 2026-11-16
 - Pages: when the pills don't fit, they fade out only on the side(s) where more are hidden (right at the start, both in the middle, left at the end) instead of being cut off.
 

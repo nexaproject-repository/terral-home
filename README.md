@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.16.3). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.17.0). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -29,7 +29,7 @@ Terral Home gives Home Assistant a clean, glass-style home screen inspired by mo
 - **Several dashboards**, each its own entry in Home Assistant's sidebar (name and icon of your choice), so each device can open its own one.
 - **Terral Home page** in the sidebar: full screen, no Home Assistant toolbar, with the "crepúsculo" background and the phone's status and home bars blended in.
 - **Same card size on every screen**: columns are about as wide as on a phone, every section is 2 columns wide, and tablets and computers place more sections side by side (each in the shortest column) instead of stretching the cards. Card sizes (height/width): **1/1, 2/1, 2/2 and 4/2**.
-- **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum, switch, home consumption), then choose the device and name.
+- **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum, switch, home consumption, doors and windows), then choose the device and name.
 - **Arrange by touch**: long-press a card to move it, drag the bottom-right corner to resize, remove with **−**.
 - **Pages** inside a dashboard, chosen with pills under the title, each with its own favourites and sections.
 - **Main dashboard per user**: open it at sign-in, and optionally show only that dashboard in the user's sidebar.
@@ -139,6 +139,16 @@ For a robot that vacuums and/or mops. Made for [Roborock](https://www.home-assis
 - **Settings**: device and name, and the routines on the card (pick up to 3, numbered in the order you pick them; scripts that look like robot scripts can be added too).
 
 How it reads Roborock: battery, progress, area, time, current room and error come from the sensors on the robot's device; water and mop mode are its `select` entities; Roborock has no "mode" entity, so *mop only* is suction `off` and *vacuum only* is water `off`; each routine of the Roborock app is a `button` on the device; rooms come from the `roborock.get_maps` action and a room clean is sent as `app_segment_clean`.
+
+### Doors and windows
+
+For a door / window contact sensor (`binary_sensor` with `device_class` door, window, garage_door or opening), or a group of them.
+
+- **Closed**: glass. **Open**: orange, with the icon swung open and the time it has been open. **Open too long** (15, 30 or 60 min, chosen in the settings; 30 by default) or **open while an alarm is armed**: red, with a red "!" and the time counting. **Cover removed or knocked** (the device's tamper / vibration sensors): red "!" on the icon even when closed.
+- **What it is**: door, window, balcony door or garage (changes the icon; guessed from the device class and the name).
+- **One sensor**: 1/1, 2/1 and 2/2 (today's open periods on a line, temperature, battery and openings today, from the same device).
+- **Group**: add more sensors in the settings and the card sums them up ("2 open · 5 closed"), the open ones first; every size up to 4/2. A row opens that sensor.
+- **Window**: state, a warning while an alarm is armed, today (timeline, openings, time open, longest), the openings of the last 7 days and the sensor's data (temperature, vibration, tamper, battery, Z-Wave node status).
 
 ### Home consumption
 
@@ -251,6 +261,20 @@ rest: true                           # rest of the house = meter − consumers
 animate: true
 ```
 
+```yaml
+type: custom:terral-home-contact
+entity: binary_sensor.balcony_door
+kind: balcony                 # door | window | balcony | garage
+alert_minutes: 30             # 15 | 30 | 60 | 0 (never)
+alarm_warn: true              # red while an alarm is armed and it is open
+tamper: true                  # red "!" when the cover is removed or it is knocked
+show_temp: true
+show_battery: true
+group:                        # optional: a group card with these too
+  - binary_sensor.front_door
+  - binary_sensor.bathroom_window
+```
+
 ## Privacy
 
 Everything stays in your Home Assistant. The layout is saved in Home Assistant's storage (`.storage/terral_home.layout`); the cards only read entity states and history and call Home Assistant services. Terral Home sends nothing to outside services.
@@ -283,7 +307,8 @@ npm run build      # type-checks and writes custom_components/terral_home/www/te
 Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto cristal, inspirada en las apps de casa de los móviles: una página propia a pantalla completa, tarjetas que añades y colocas con el dedo y una ventana para cada dispositivo.
 
 - **Instalación**: en HACS añade este repositorio como **repositorio personalizado** de tipo **Integración**, instala **Terral Home**, reinicia y añade la integración desde **Ajustes → Dispositivos y servicios**. Aparecerá **Terral Home** en la barra lateral.
-- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo, robot aspirador, interruptor, consumo de la casa) → dispositivo y nombre → **Añadir**.
+- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo, robot aspirador, interruptor, consumo de la casa, puertas y ventanas) → dispositivo y nombre → **Añadir**.
+- **Puertas y ventanas**: cerrada en cristal, abierta en naranja con el tiempo, roja si lleva abierta más de lo que elijas (15, 30 o 60 min) o si la alarma está armada, y una **!** roja si quitan la tapa o la golpean. Puede ser un solo sensor o un grupo («2 abiertas · 5 cerradas»). La ventana tiene las aperturas del día y de la semana y los datos del sensor.
 - **Consumo de la casa**: el contador general repartido entre los consumidores que elijas (cargador, aire…) y el **resto de la casa**. Tres vistas a elegir en los ajustes: **Flujo** (puntos que van de la red a cada consumidor), **Anillo** y **Barras**, con movimiento más rápido cuanto más gasta cada uno. La ventana tiene el consumo de hoy por horas, por consumidor y de los últimos 7 días.
 - **Interruptor** (termo, matamosquitos, enchufe…): el icono lo enciende y apaga; en los ajustes eliges el **icono** (15), el **color** al encender (8: fuerte en el icono y suave de fondo) y qué muestra la **2/2** (A · Datos, B · Consumo o C · Línea del día). La ventana tiene el día de hoy, el consumo de los últimos 7 días y el **registro** de encendidos y apagados con quién lo hizo. Sin medidor de consumo muestra horas encendido.
 - **Robot aspirador** (Roborock u otros): en espera, la 2/2 muestra tus 3 rutinas principales (se eligen en los ajustes) y el icono abre todas; limpiando, el icono pausa y se ve el progreso; atascado, sale una **!** roja sobre el icono. La batería va en el texto. En la ventana: aspirar / fregar / ambos, potencia, agua, modo de mopa, habitaciones y rutinas; lo que no aplica se apaga.

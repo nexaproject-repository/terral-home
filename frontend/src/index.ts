@@ -8,6 +8,7 @@ import "./weather/terral-weather-card";
 import "./vacuum/terral-vacuum-card";
 import "./switch/terral-switch-card";
 import "./energy/terral-energy-card";
+import "./contact/terral-contact-card";
 import "./panel/terral-home-panel";
 import type { HomeAssistant } from "./ha-types";
 
@@ -109,6 +110,16 @@ if (!w.customCards.some((c) => c.type === "terral-home-energy")) {
     type: "terral-home-energy",
     name: "Terral · Energía",
     description: "Consumo de la casa repartido por consumidores, con animación / Terral Home energy flow",
+    preview: true,
+    documentationURL: "https://github.com/nexaproject-repository/terral-home",
+  });
+}
+
+if (!w.customCards.some((c) => c.type === "terral-home-contact")) {
+  w.customCards.push({
+    type: "terral-home-contact",
+    name: "Terral · Puertas y ventanas",
+    description: "Sensor de puerta o ventana, o un grupo de ellos, con avisos / Terral Home door & window",
     preview: true,
     documentationURL: "https://github.com/nexaproject-repository/terral-home",
   });
