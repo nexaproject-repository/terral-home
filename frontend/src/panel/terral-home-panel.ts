@@ -1458,8 +1458,8 @@ export class TerralHomePanel extends LitElement {
       width: 36px;
       min-width: 36px;
       padding: 0;
-      display: grid;
-      place-items: center;
+      display: block;
+      position: relative;
       flex: none;
       box-sizing: border-box;
       -webkit-appearance: none;
@@ -1468,6 +1468,10 @@ export class TerralHomePanel extends LitElement {
       line-height: 0;
     }
     .pg.add svg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
       display: block;
       margin: 0;
     }

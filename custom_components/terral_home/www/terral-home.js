@@ -11439,7 +11439,7 @@ function Dd(t, e, s) {
   const i = document.createElement("terral-menu-sheet");
   return i.hass = t, i.version = e, i.actions = s, document.body.appendChild(i), i;
 }
-const $o = "0.15.3";
+const $o = "0.15.4";
 var Od = Object.defineProperty, Pd = Object.getOwnPropertyDescriptor, P = (t, e, s, i) => {
   for (var n = i > 1 ? void 0 : i ? Pd(e, s) : e, a = t.length - 1, o; a >= 0; a--)
     (o = t[a]) && (n = (i ? o(e, s, n) : o(n)) || n);
@@ -12360,8 +12360,8 @@ z.styles = A`
       width: 36px;
       min-width: 36px;
       padding: 0;
-      display: grid;
-      place-items: center;
+      display: block;
+      position: relative;
       flex: none;
       box-sizing: border-box;
       -webkit-appearance: none;
@@ -12370,6 +12370,10 @@ z.styles = A`
       line-height: 0;
     }
     .pg.add svg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
       display: block;
       margin: 0;
     }
