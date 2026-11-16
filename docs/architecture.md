@@ -74,7 +74,9 @@ Built with Lit 3 and Vite into a single ES module. `npm run build` runs `tsc --n
 
 ### The panel (`panel/terral-home-panel.ts`)
 
-- Loads the layout through the websocket, subscribes to changes and renders the grid: 2 columns below 600 px, otherwise 4. Row height is 85 % of half a column.
+- Loads the layout through the websocket, subscribes to changes and renders it.
+- **Same size everywhere**: a column is 160–184 px (about a phone column), every block is `SECTION_COLS` = 2 columns wide (a Terral setting may offer 4 later). The cards without a section form the first block (no title); each section is another. `_measure()` works out how many blocks fit side by side ("lanes": 1 on phones, 2 on tablets, 3–5 on computers) and the column width; the page is centred at that width. Row height is 85 % of half a column.
+- **Lanes (option A)**: `_rowsOf()` simulates the grid's `row dense` packing to know each block's height, and `_assignLanes()` puts each block, in order, in the shortest lane, so there are no gaps. Dragging a section picks the lane under the finger and the position by the sections' middles (`_hitSection`), shows a line there and moves the section in the list; the lanes are then recomputed.
 - Creates the card elements itself (`CARD_TAGS`) and passes `hass` and a config with `view_layout.terral = { w, h }`.
 - **Move mode**: entered with a long press on a card (`terral-card-hold`) or from the ··· menu. Cards jiggle; with a finger, a card is picked up after resting ~0.3 s on it (swiping scrolls), with the mouse at once. The corner arc resizes, snapping to the sizes the card offers; **−** removes. Sections have a title (tap to rename), a three-line handle and **−**.
 - **Edges**: while open it paints `html`/`body`, sets `meta[name=theme-color]` and the theme variables the Companion app reads (`--app-header-background-color`, `--primary-background-color`), then sends `theme-update` through the external bus. It saves and restores **only** those properties, because Home Assistant applies themes as inline styles on the same elements.

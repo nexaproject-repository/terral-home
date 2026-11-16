@@ -2,6 +2,10 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.11.0 — 2026-11-16
+- **Same card size on phone, tablet and PC.** Columns keep a phone-like width; every section is 2 columns wide and wider screens show several sections side by side, each in the shortest column, instead of stretching the cards.
+- Move mode: sections can be dragged to another column.
+
 ## 0.10.0 — 2026-11-16
 - **Robot vacuum card** (Roborock or any vacuum) in 1/1, 2/1 and 2/2, with a round floor-robot icon. Waiting: the 2/2 shows the 3 main routines and the icon opens every routine. Cleaning: the icon pauses, progress / area / time, pause and back to the dock. Stuck: red tint and a red "!" on the icon. Battery in the text with a level icon that changes colour.
 - Robot window: vacuum / mop / both, suction, water, mop mode, rooms (Roborock), start / pause / dock / locate and routines; controls that don't apply are dimmed with the reason.

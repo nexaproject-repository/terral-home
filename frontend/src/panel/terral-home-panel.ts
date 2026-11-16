@@ -1,10 +1,14 @@
 // Terral Home panel: full-screen page in HA's sidebar (no HA toolbar).
 // The integration stores the layout (cards, sizes, order, sections); this
-// element shows it on a 2-column (phone) or 4-column (tablet and wider) grid.
+// element shows it. Cards are the same size on every screen: columns are
+// about a phone column wide, every block is 2 columns wide, and wider
+// screens place more blocks side by side ("lanes", each block in the
+// shortest lane) instead of stretching the cards.
 //
 // - Starts empty, with an "Añadir accesorio" tile.
 // - "+" adds a card; "···" opens the Terral menu.
-// - Cards without a section go first; each section has a title and its cards.
+// - Cards without a section go first (a block without title); each section
+//   is a block with a title and its cards.
 // - Long press on a card enters move mode (cards jiggle): drag cards (also
 //   between sections), "−" removes, the corner grip resizes; sections show
 //   "−", a tappable title to rename and three lines to move the whole block.
@@ -70,6 +74,15 @@ const ALL_SIZES: CellSize[] = [
 
 const ROW_RATIO = 0.85;
 
+/** Columns per section. Fixed at 2 for now; a Terral setting may offer 4 later. */
+const SECTION_COLS = 2;
+/** Column width range: about the width of a column on a phone. */
+const COL_MIN = 160;
+const COL_MAX = 184;
+const GAP = 10;
+/** Space between blocks placed side by side. */
+const LANE_GAP = 22;
+
 const CARD_TAGS: Record<string, string> = {
   light: "terral-home-light",
   alarm: "terral-home-alarm",
@@ -115,6 +128,12 @@ export class TerralHomePanel extends LitElement {
   @state() private _dragDy = 0;
   @state() private _resize?: { id: string; w: number; h: number };
   @state() private _renaming?: string;
+  /** Blocks side by side (1 on phones) and the width of each. */
+  @state() private _lanes = 1;
+  @state() private _laneW = 358;
+  @state() private _pad = 16;
+  /** Where the dragged section would land: before / after a section, or at the end of an empty lane. */
+  @state() private _dropMark?: { sid?: string; after?: boolean; lane?: number };
 
   private _colW = 160;
   private _gap = 10;
@@ -303,19 +322,63 @@ export class TerralHomePanel extends LitElement {
 
   // ---- Layout -------------------------------------------------------------
 
+  /**
+   * Cards are the same size on phone, tablet and PC: a column is always about
+   * as wide as on a phone (COL_MIN–COL_MAX px). Every block (the cards without
+   * a section, and each section) is SECTION_COLS columns wide; wider screens
+   * fit more blocks side by side ("lanes") instead of stretching the cards.
+   */
   private _measure(width: number) {
     const pad = width < 600 ? 16 : 24;
-    const gap = width < 600 ? 10 : 14;
-    const inner = Math.min(width, 1180) - 2 * pad;
-    const cols = width < 600 ? 2 : 4;
-    const colW = (inner - gap * (cols - 1)) / cols;
+    const gap = GAP;
+    const avail = width - 2 * pad;
+    const blockMin = SECTION_COLS * COL_MIN + (SECTION_COLS - 1) * gap;
+    const lanes = Math.max(1, Math.floor((avail + LANE_GAP) / (blockMin + LANE_GAP)));
+    const perLane = (avail - (lanes - 1) * LANE_GAP) / lanes;
+    const colW = Math.min(COL_MAX, (perLane - (SECTION_COLS - 1) * gap) / SECTION_COLS);
     // ROW_RATIO < 1 makes cards shorter than square (2 rows = colW × ratio).
     const ratio = (window as unknown as { __terralRowRatio?: number }).__terralRowRatio ?? ROW_RATIO;
     const rowH = Math.max(48, Math.round(((colW - gap) / 2) * ratio));
     this._colW = colW;
     this._gap = gap;
-    if (cols !== this._cols) this._cols = cols;
+    const laneW = Math.round(SECTION_COLS * colW + (SECTION_COLS - 1) * gap);
+    if (SECTION_COLS !== this._cols) this._cols = SECTION_COLS;
     if (rowH !== this._rowH) this._rowH = rowH;
+    if (lanes !== this._lanes) this._lanes = lanes;
+    if (laneW !== this._laneW) this._laneW = laneW;
+    if (pad !== this._pad) this._pad = pad;
+  }
+
+  /** Rows a list of cards takes in its 2-column grid (same "row dense" packing as CSS). */
+  private _rowsOf(cards: TerralCard[]): number {
+    const used: boolean[][] = [];
+    const free = (r: number, c: number, w: number, h: number) => {
+      for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (x >= this._cols || used[y]?.[x]) return false;
+      return true;
+    };
+    let rows = 0;
+    for (const card of cards) {
+      const { w, h } = this._sizeOf(card);
+      for (let r = 0; ; r++) {
+        const c = [...Array(this._cols - w + 1).keys()].find((x) => free(r, x, w, h));
+        if (c == null) continue;
+        for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) (used[y] ??= [])[x] = true;
+        rows = Math.max(rows, r + h);
+        break;
+      }
+    }
+    return rows;
+  }
+
+  /** Option A: each block goes to the shortest lane, in order, so there are no gaps. */
+  private _assignLanes<T>(blocks: { item: T; rows: number; titled: boolean }[]): T[][] {
+    const lanes = Array.from({ length: this._lanes }, () => ({ h: 0, items: [] as T[] }));
+    for (const b of blocks) {
+      const lane = lanes.reduce((a, l) => (l.h < a.h - 0.01 ? l : a));
+      lane.items.push(b.item);
+      lane.h += Math.max(1, b.rows) * (this._rowH + this._gap) + (b.titled ? 60 : 0);
+    }
+    return lanes.map((l) => l.items);
   }
 
   private _sizeOf(c: TerralCard): CellSize {
@@ -618,7 +681,7 @@ export class TerralHomePanel extends LitElement {
     this._dragDx = ev.clientX - this._dragStart.x;
     this._dragDy = ev.clientY - this._dragStart.y;
     if (this._drag.kind === "card") this._hitCard(ev.clientX, ev.clientY);
-    else this._hitSection(ev.clientY);
+    else this._hitSection(ev.clientX, ev.clientY);
     this._autoScroll(ev.clientY);
   };
 
@@ -633,14 +696,33 @@ export class TerralHomePanel extends LitElement {
     if (zone) this._dropCard = { key: zone.dataset.zone! };
   }
 
-  private _hitSection(y: number) {
-    const boxes = [...this.renderRoot.querySelectorAll<HTMLElement>("section[data-sid]")].filter(
-      (el) => el.dataset.sid !== this._drag?.id,
-    );
-    this._dropSection = boxes.filter((el) => {
+  /** Section drop target: the lane under the finger, then before the first section whose middle is below it. */
+  private _hitSection(x: number, y: number) {
+    const dragId = this._drag?.id;
+    const order = this._sections.filter((s) => s.id !== dragId).map((s) => s.id);
+    const lanes = [...this.renderRoot.querySelectorAll<HTMLElement>(".lane")];
+    if (!lanes.length) return;
+    const centre = (el: HTMLElement) => {
       const r = el.getBoundingClientRect();
-      return r.top + r.height / 2 < y;
-    }).length;
+      return Math.abs(x - (r.left + r.width / 2));
+    };
+    const lane = lanes.reduce((a, b) => (centre(b) < centre(a) ? b : a));
+    const inLane = [...lane.querySelectorAll<HTMLElement>("section[data-sid]")].filter((el) => el.dataset.sid !== dragId);
+    const before = inLane.find((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top + r.height / 2 > y;
+    });
+    if (before) {
+      this._dropSection = order.indexOf(before.dataset.sid!);
+      this._dropMark = { sid: before.dataset.sid };
+    } else if (inLane.length) {
+      const last = inLane[inLane.length - 1].dataset.sid!;
+      this._dropSection = order.indexOf(last) + 1;
+      this._dropMark = { sid: last, after: true };
+    } else {
+      this._dropSection = order.length;
+      this._dropMark = { lane: lanes.indexOf(lane) };
+    }
   }
 
   private _dragUp = () => {
@@ -695,6 +777,7 @@ export class TerralHomePanel extends LitElement {
     this._drag = undefined;
     this._dropCard = undefined;
     this._dropSection = undefined;
+    this._dropMark = undefined;
     this._dragStart = undefined;
     this._dragDx = this._dragDy = 0;
   }
@@ -724,10 +807,18 @@ export class TerralHomePanel extends LitElement {
     const draggingCard = this._drag?.kind === "card";
     const draggingSection = this._drag?.kind === "section";
     const showTop = top.length > 0 || empty || (edit && (draggingCard || !sections.length));
-    let shown = 0;
+    // Blocks: the cards without a section first, then each section; spread over the lanes.
+    type Block = { kind: "top" } | { kind: "sec"; s: TerralSection };
+    const blocks: { item: Block; rows: number; titled: boolean }[] = [];
+    if (showTop) blocks.push({ item: { kind: "top" }, rows: Math.max(this._rowsOf(top), empty || (edit && !sections.length) ? 2 : 1), titled: false });
+    for (const s of sections) if (edit || s.cards.length) blocks.push({ item: { kind: "sec", s }, rows: this._rowsOf(s.cards), titled: true });
+    const lanes = this._assignLanes(blocks);
+    const mark = this._dropMark;
+    const line = html`<div class="dropline"></div>`;
+    const contentW = this._lanes * this._laneW + (this._lanes - 1) * LANE_GAP;
     return html`
       <div class="scroller" style="background:${EDGE_FADES}${backgroundCss("crepusculo")}" @terral-card-hold=${this._onHold} @terral-card-config=${this._onCardConfig} @terral-card-remove=${this._onCardRemove}>
-        <div class="wrap ${edit ? "editing" : ""}">
+        <div class="wrap ${edit ? "editing" : ""}" style="max-width:${contentW + 2 * this._pad}px">
           <div class="top">
             <button class="glass round" aria-label=${t(this.hass, "menu")} @click=${() => fireEvent(this, "hass-toggle-menu")}>
               ${menuIcon()}
@@ -745,21 +836,26 @@ export class TerralHomePanel extends LitElement {
           </div>
           <h1>${t(this.hass, "home_title")}</h1>
           ${this._error ? html`<p class="notice">${t(this.hass, "panel_error")} (${this._error})</p>` : nothing}
-          ${showTop
-            ? this._grid(TOP, top, edit, empty || (edit && !sections.length), top.length === 0 && edit ? t(this.hass, "no_section") : undefined)
-            : nothing}
-          ${repeat(
-            sections,
-            (s) => s.id,
-            (s) => {
-              const lifted = draggingSection && this._drag?.id === s.id;
-              const lineBefore = draggingSection && !lifted && this._dropSection === shown;
-              if (!lifted) shown++;
-              if (!edit && !s.cards.length) return nothing;
-              return html`${lineBefore ? html`<div class="dropline"></div>` : nothing}${this._section(s, edit, lifted)}`;
-            },
-          )}
-          ${draggingSection && this._dropSection === shown ? html`<div class="dropline"></div>` : nothing}
+          <div class="lanes" style="--lane-gap:${LANE_GAP}px">
+            ${lanes.map(
+              (items, li) => html`<div class="lane" style="width:${this._laneW}px">
+                ${repeat(
+                  items,
+                  (b) => (b.kind === "top" ? TOP : b.s.id),
+                  (b) => {
+                    if (b.kind === "top") {
+                      return html`<div class="topblock">${this._grid(TOP, top, edit, empty || (edit && !sections.length), top.length === 0 && edit ? t(this.hass, "no_section") : undefined)}</div>`;
+                    }
+                    const s = b.s;
+                    const lifted = draggingSection && this._drag?.id === s.id;
+                    const here = draggingSection && !lifted && mark?.sid === s.id;
+                    return html`${here && !mark?.after ? line : nothing}${this._section(s, edit, lifted)}${here && mark?.after ? line : nothing}`;
+                  },
+                )}
+                ${draggingSection && mark?.lane === li ? line : nothing}
+              </div>`,
+            )}
+          </div>
           ${edit && loaded
             ? html`<button class="addsec" @click=${this._addSection}>${plusIcon(20)}<span>${t(this.hass, "add_section")}</span></button>`
             : nothing}
@@ -771,7 +867,7 @@ export class TerralHomePanel extends LitElement {
 
   private _section(s: TerralSection, edit: boolean, lifted: boolean) {
     const renaming = this._renaming === s.id;
-    const style = lifted ? `translate:0 ${this._dragDy}px` : "";
+    const style = lifted ? `translate:${this._dragDx}px ${this._dragDy}px` : "";
     return html`<section class="sec ${lifted ? "lifted" : ""}" data-sid=${s.id} style=${style}>
       <header>
         ${edit ? html`<button class="sdel" aria-label=${t(this.hass, "delete_section")} @click=${() => this._removeSection(s.id)}>${minusIcon()}</button>` : nothing}
@@ -807,7 +903,7 @@ export class TerralHomePanel extends LitElement {
     return html`<div
       class="grid ${zoneTarget ? "zone-target" : ""} ${key === TOP ? "top-grid" : ""}"
       data-zone=${key}
-      style="grid-template-columns:repeat(${this._cols},minmax(0,1fr));grid-auto-rows:${this._rowH}px"
+      style="grid-template-columns:repeat(${this._cols},minmax(0,1fr));grid-auto-rows:${this._rowH}px;gap:${this._gap}px"
     >
       ${repeat(cards, (c) => c.id, (c, i) => this._cell(key, c, i, edit))}
       ${placeholder && !cards.length ? html`<div class="placeholder" style="grid-column:1/-1">${placeholder}</div>` : nothing}
@@ -893,7 +989,6 @@ export class TerralHomePanel extends LitElement {
       background: linear-gradient(180deg, rgba(58, 79, 128, 0) 0, rgba(58, 79, 128, 0.55) 45%, rgba(58, 79, 128, 0.92) 80%, #3a4f80 100%);
     }
     .wrap {
-      max-width: 1180px;
       margin: 0 auto;
       padding: 12px 16px 110px;
       box-sizing: border-box;
@@ -966,13 +1061,24 @@ export class TerralHomePanel extends LitElement {
     }
     .grid {
       display: grid;
-      gap: 10px;
       grid-auto-flow: row dense;
     }
-    @media (min-width: 600px) {
-      .grid {
-        gap: 14px;
-      }
+    /* Blocks (cards without a section, sections) side by side, each in the shortest lane. */
+    .lanes {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--lane-gap);
+    }
+    .lane {
+      flex: none;
+      min-width: 0;
+    }
+    .lane > section.sec:first-child,
+    .lane > .dropline:first-child + section.sec {
+      margin-top: 0;
+    }
+    .topblock + section.sec {
+      margin-top: 18px;
     }
     .cell {
       position: relative;
