@@ -4,7 +4,7 @@ import { css, html, nothing, svg } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { HomeAssistant } from "../ha-types";
 import { t, type StringKey } from "../i18n";
-import { bulbIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon } from "../shared/icons";
+import { bulbIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon, vacuumIcon } from "../shared/icons";
 import { TerralSheet } from "../shared/terral-sheet";
 import type { CardType } from "./terral-card-config";
 import { weatherIcon } from "../weather/weather-look";
@@ -19,6 +19,7 @@ const TYPES: { type: CardType; name: StringKey; desc: StringKey; icon: () => unk
   { type: "charger", name: "ev_charger", desc: "type_charger_desc", icon: () => evChargerIcon(20), color: "#34c77b" },
   { type: "climate", name: "type_climate", desc: "type_climate_desc", icon: () => thermoIcon(), color: "#4696ff" },
   { type: "weather", name: "type_weather", desc: "type_weather_desc", icon: () => weatherIcon("partlycloudy", 26), color: "linear-gradient(180deg,#3a8ee6,#7cc0f5)" },
+  { type: "vacuum", name: "type_vacuum", desc: "type_vacuum_desc", icon: () => vacuumIcon(21), color: "#22a587" },
 ];
 const SOON: { name: StringKey; icon: () => unknown }[] = [
   { name: "type_cover", icon: () => blindIcon() },
@@ -46,7 +47,9 @@ export class TerralAddSheet extends TerralSheet {
           ? "climate_missing"
           : type === "weather" && !Object.keys(this.hass.states).some((id) => id.startsWith("weather."))
             ? "weather_missing"
-            : undefined;
+            : type === "vacuum" && !Object.keys(this.hass.states).some((id) => id.startsWith("vacuum."))
+              ? "vacuum_missing"
+              : undefined;
     const soon = SOON.filter((x) => match(x.name));
     return html`
       <label class="search">

@@ -5,6 +5,7 @@ import "./alarm/terral-alarm-card";
 import "./charger/terral-charger-card";
 import "./climate/terral-climate-card";
 import "./weather/terral-weather-card";
+import "./vacuum/terral-vacuum-card";
 import "./panel/terral-home-panel";
 import type { HomeAssistant } from "./ha-types";
 
@@ -74,6 +75,18 @@ if (!w.customCards.some((c) => c.type === "terral-home-weather")) {
     description: "El tiempo y su previsión al estilo Terral Home / Terral Home weather and forecast",
     preview: true,
     documentationURL: "https://github.com/nexaproject-repository/terral-home",
+  });
+}
+
+if (!w.customCards.some((c) => c.type === "terral-home-vacuum")) {
+  w.customCards.push({
+    type: "terral-home-vacuum",
+    name: "Terral · Robot",
+    description: "Robot aspirador / friegasuelos (Roborock y otros) al estilo Terral Home / Terral Home robot vacuum",
+    preview: true,
+    documentationURL: "https://github.com/nexaproject-repository/terral-home",
+    getEntitySuggestion: (_hass, entityId) =>
+      entityId.startsWith("vacuum.") ? { config: { type: "custom:terral-home-vacuum", entity: entityId } } : null,
   });
 }
 

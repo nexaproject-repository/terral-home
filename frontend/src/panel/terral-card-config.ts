@@ -4,7 +4,7 @@
 //             the weather, the entity itself (they have no device), and name.
 //   Per type — light entity / tint; charger lock switch, invert, data sensors,
 //             max power; climate limits, steps, per-mode controls, swing;
-//             weather forecast options.
+//             weather forecast options; robot vacuum routines on the card.
 // The size is not chosen here: new cards get a default and the corner resizes.
 // In "edit" mode it reports through terral-card-config / terral-card-remove
 // events (see openCardSettings), which the Terral panel stores in the layout.
@@ -31,9 +31,11 @@ import { openConfirmSheet } from "./terral-confirm-sheet";
 import { type ClimateConfig, fanModes, limits, modeName, modes as climateModes, rules as climateRules, swingSupported } from "../climate/climate-model";
 import { modeIcon as climateIcon } from "../climate/climate-look";
 import { lang } from "../i18n";
-import { stepMinusIcon, stepPlusIcon, thermoIcon } from "../shared/icons";
+import { stepMinusIcon, stepPlusIcon, thermoIcon, vacuumIcon } from "../shared/icons";
+import { deviceRoutines, isVacuumScript, routineName } from "../vacuum/vacuum-model";
+import { routineIcon } from "../vacuum/vacuum-look";
 
-export type CardType = "light" | "alarm" | "charger" | "climate" | "weather";
+export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum";
 export interface CardDraft {
   type: CardType;
   config: Record<string, any>;
@@ -47,7 +49,7 @@ export interface CardConfigOptions {
   onRemove?: () => void;
 }
 
-const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather" };
+const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather", vacuum: "type_vacuum" };
 
 type Sub = "device" | "entity" | "alarm" | "weather" | "lock" | "status_entity" | "power_entity" | "energy_entity";
 type Dev = { id: string; name?: string | null; name_by_user?: string | null; area_id?: string | null; manufacturer?: string | null; model?: string | null };
@@ -192,6 +194,8 @@ export class TerralCardConfig extends TerralSheet {
             <div class="li"><span class="nm">${t(h, "forecast_days")}</span>${seg(c.forecast_days ?? 7, [[5, "5"], [7, "7"]], (v) => this._set({ forecast_days: v === 7 ? undefined : v }))}</div>
           </div>
         </section>`;
+    } else if (type === "vacuum" && c.entity && h.states[c.entity]) {
+      specific = this._vacuumSettings();
     } else if (type === "climate" && c.entity && h.states[c.entity]) {
       specific = this._climateSettings(devId);
     } else if (type === "charger" && c.entity) {
@@ -325,6 +329,36 @@ export class TerralCardConfig extends TerralSheet {
       </section>`;
   }
 
+  /** Up to 3 routines for the 2/2 card, numbered in the order they were picked. */
+  private _vacuumSettings() {
+    const h = this.hass;
+    const c = this.draft.config;
+    const robot = c.name || this._entName(c.entity);
+    const chosen: string[] = (c.routines ?? []).filter((id: string) => h.states[id]);
+    const dev = deviceRoutines(h, c.entity);
+    const scripts = Object.keys(h.states).filter((id) => (isVacuumScript(h, id) || chosen.includes(id)) && !dev.includes(id) && this._visible(id));
+    const toggle = (id: string) => {
+      const next = chosen.includes(id) ? chosen.filter((x) => x !== id) : chosen.length < 3 ? [...chosen, id] : chosen;
+      this._set({ routines: next.length ? next : undefined });
+    };
+    const row = (id: string) => {
+      const n = routineName(h, id, robot);
+      const i = chosen.indexOf(id);
+      const full = i < 0 && chosen.length >= 3;
+      return html`<button class="li" role="checkbox" aria-checked=${i >= 0} ?disabled=${full} style=${full ? "opacity:.45" : ""} @click=${() => toggle(id)}>
+        <span class="ic">${routineIcon(n, 18)}</span>
+        <span class="nm">${n}${id.startsWith("script.") ? html`<small>${id}</small>` : nothing}</span>
+        <span class="num ${i >= 0 ? "on" : ""}">${i >= 0 ? i + 1 : nothing}</span>
+      </button>`;
+    };
+    return html`<section>
+        <h3>${t(h, "vac_card_routines")}</h3>
+        ${dev.length ? html`<div class="list">${dev.map(row)}</div>` : html`<p class="note">${t(h, "vac_no_routines")}</p>`}
+        <p class="note" style="margin-top:8px">${t(h, "vac_card_routines_sub")}</p>
+      </section>
+      ${scripts.length ? html`<section><h3>${t(h, "vac_scripts")}</h3><div class="list">${scripts.map(row)}</div></section>` : nothing}`;
+  }
+
   // ---- Sub pages ---------------------------------------------------------------
 
   private _opt(label: string, small: string | undefined, selected: boolean, onPick: () => void, icon?: unknown) {
@@ -373,6 +407,17 @@ export class TerralCardConfig extends TerralSheet {
           this._opt(this._devName(x.d), x.lights.length > 1 ? `${x.lights.length} ${t(h, "lights_word")}` : x.d.model ?? undefined, cur === x.d.id, () =>
             this._set({ device: x.d.id, entity: x.lights[0], name: this._devName(x.d) }), bulbIcon(false, 20)))}
         ${this._group(t(h, "other_lights"), others.map((id) => this._opt(this._entName(id), id, c.entity === id, () => pickEntity(id), bulbIcon(false, 20))))}`;
+    }
+    if (type === "vacuum") {
+      const devs = this._devices
+        .map((d) => ({ d, ents: this._entitiesOf(d.id, (id) => id.startsWith("vacuum.")) }))
+        .filter((x) => x.ents.length && this._match(this._devName(x.d), ...x.ents.map(this._entName)))
+        .sort((a, b) => this._devName(a.d).localeCompare(this._devName(b.d)));
+      const loose = Object.keys(h.states).filter((id) => id.startsWith("vacuum.") && this._visible(id) && !this._deviceOf(id) && this._match(this._entName(id), id));
+      return html`${this._search()}
+        ${this._byArea(devs, (x) => x.d.area_id, (x) =>
+          this._opt(this._devName(x.d), x.d.model ?? undefined, cur === x.d.id, () => this._set({ device: x.d.id, entity: x.ents[0], name: this._devName(x.d), routines: undefined }), vacuumIcon(20)))}
+        ${this._group(t(h, "other_vacuums"), loose.map((id) => this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id, device: undefined, name: this._entName(id), routines: undefined }), vacuumIcon(20))))}`;
     }
     if (type === "climate") {
       const devs = this._devices
@@ -745,6 +790,24 @@ export class TerralCardConfig extends TerralSheet {
       .ck.on {
         background: #34c77b;
         border-color: #34c77b;
+      }
+      .num {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        flex: none;
+      }
+      .num.on {
+        background: #fff;
+        border-color: #fff;
+        color: #23233a;
       }
       .more,
       .remove {

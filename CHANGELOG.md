@@ -2,6 +2,11 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.10.0 — 2026-11-16
+- **Robot vacuum card** (Roborock or any vacuum) in 1/1, 2/1 and 2/2, with a round floor-robot icon. Waiting: the 2/2 shows the 3 main routines and the icon opens every routine. Cleaning: the icon pauses, progress / area / time, pause and back to the dock. Stuck: red tint and a red "!" on the icon. Battery in the text with a level icon that changes colour.
+- Robot window: vacuum / mop / both, suction, water, mop mode, rooms (Roborock), start / pause / dock / locate and routines; controls that don't apply are dimmed with the reason.
+- Settings: routines on the card (up to 3, in order), robot scripts included.
+
 ## 0.9.1 — 2026-11-16
 - Documentation: README rewritten (cards, usage, YAML options, privacy, roadmap), this changelog and `docs/architecture.md`.
 - Code: removed the unused preview from the settings sheet; updated file headers.

@@ -152,3 +152,31 @@ export const heatCoolIcon = (size = 22) =>
 export const thermoIcon = (size = 22) => line(size, svg`<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"></path>`);
 export const stepMinusIcon = (size = 20) => line(size, svg`<path d="M6 12h12"></path>`, 2.4);
 export const stepPlusIcon = (size = 20) => line(size, svg`<path d="M12 6v12M6 12h12"></path>`, 2.4);
+
+// ---- Robot vacuum -----------------------------------------------------------
+
+/** Round floor robot seen from above: bumper, laser turret, side brush. */
+export const vacuumIcon = (size = 24) =>
+  line(size, svg`<circle cx="12" cy="12" r="9"></circle><path d="M5.6 8.2a8 8 0 0 1 12.8 0"></path><circle cx="12" cy="12.6" r="2.6"></circle><circle cx="15.6" cy="16.8" r=".6" fill="currentColor"></circle>`, 1.9);
+export const playIcon = (size = 20) => line(size, svg`<path d="M7 4.5v15l12-7.5z" fill="currentColor"></path>`, 1.6);
+export const pauseIcon = (size = 20) => line(size, svg`<path d="M8 5v14M16 5v14"></path>`, 3);
+export const stopIcon = (size = 20) => line(size, svg`<rect x="6" y="6" width="12" height="12" rx="2"></rect>`);
+export const locateIcon = (size = 20) =>
+  line(size, svg`<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle>`);
+export const exclaimIcon = (size = 14) => line(size, svg`<path d="M12 5v9"></path><path d="M12 18.5h.01"></path>`, 3.2);
+export const sparklesIcon = (size = 18) =>
+  line(size, svg`<path d="M12 4l1.8 4.7L18.5 10.5l-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8z"></path><path d="M19 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"></path>`);
+export const dropIcon = (size = 18) => line(size, svg`<path d="M12 3.5s6 6.4 6 10.5a6 6 0 0 1-12 0c0-4.1 6-10.5 6-10.5z"></path>`);
+export const kitchenIcon = (size = 18) =>
+  line(size, svg`<path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M10 3v7a2 2 0 0 1-2 2"></path><path d="M17 21V3c-2 1.5-3 4-3 7v3h3"></path>`);
+export const bedIcon = (size = 18) => line(size, svg`<path d="M3 19V6M3 15h18v4M21 15v-3a3 3 0 0 0-3-3h-7v6"></path><circle cx="7" cy="11.5" r="1.8"></circle>`);
+export const sofaIcon = (size = 18) =>
+  line(size, svg`<path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3"></path><path d="M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3z"></path><path d="M6 18v2M18 18v2"></path>`);
+export const pawIcon = (size = 18) =>
+  line(size, svg`<circle cx="7" cy="10" r="1.6"></circle><circle cx="10.5" cy="6.5" r="1.6"></circle><circle cx="14.5" cy="6.5" r="1.6"></circle><circle cx="18" cy="10" r="1.6"></circle><path d="M12.5 12c2.5 0 5 3.3 5 5.5 0 1.6-1.4 2.5-3 2.1-1.3-.3-2.7-.3-4 0-1.6.4-3-.5-3-2.1 0-2.2 2.5-5.5 5-5.5z"></path>`);
+/** Battery with 0–4 bars, or a bolt while charging. */
+export const batteryLevelIcon = (bars: number, charging = false, size = 16) =>
+  line(size, svg`<rect x="2.5" y="7" width="16.5" height="10" rx="2.5"></rect><path d="M21.5 10.5v3"></path>
+    ${charging
+      ? svg`<path d="M11.5 8.6L8.6 12.4h3.2l-1.3 3" stroke-width="1.8"></path>`
+      : [0, 1, 2, 3].slice(0, bars).map((i) => svg`<rect x=${4.6 + i * 3.4} y="9.2" width="2.3" height="5.6" rx=".6" fill="currentColor" stroke="none"></rect>`)}`);

@@ -16,7 +16,7 @@ custom_components/terral_home/   Home Assistant integration (Python)
 frontend/                        frontend source (TypeScript + Lit + Vite)
   src/index.ts                   entry: registers every card and the panel
   src/panel/                     the Terral Home page and its sheets
-  src/light|alarm|charger|climate|weather/   one folder per card
+  src/light|alarm|charger|climate|weather|vacuum/   one folder per card
   src/shared/                    sheet base, popover menu, slider, icons, scroll lock, backgrounds
   src/i18n.ts                    Spanish / English strings
   src/ha-types.ts                the small part of HA's frontend types we use
@@ -52,7 +52,7 @@ One layout for the whole household, stored with `homeassistant.helpers.storage.S
 }
 ```
 
-- `type`: `light`, `alarm`, `charger`, `climate` or `weather`.
+- `type`: `light`, `alarm`, `charger`, `climate`, `weather` or `vacuum`.
 - `w` ∈ {1, 2}, `h` ∈ {1, 2, 4}. Sizes are named height/width: 1/1, 2/1 (`w:1,h:2`), 2/2, 4/2 (`w:2,h:4`).
 - Limits: 300 cards, 50 sections. The schema allows extra keys on cards and sections.
 
@@ -113,6 +113,7 @@ Events a card dispatches (`bubbles` + `composed`):
 - **Charger** (`charger/`): `isLocked` / `setLocked` handle switches, locks and `input_boolean` with `invert`. Status, power and energy sensors are auto-detected on the same device. Charge history is rebuilt from the power sensor's history (`history/history_during_period`): sessions above 0.05 kW, gaps under 15 min merged.
 - **Climate** (`climate/`): modes from `hvac_modes` without `off`; what each mode shows comes from `DEFAULT_RULES`, the card's `mode_rules` and what the unit reports. Temperature changes are sent after a 650 ms pause.
 - **Weather** (`weather/`): forecasts through `weather/subscribe_forecast`, shared between cards per entity and type; night comes from `sun.sun`.
+- **Robot vacuum** (`vacuum/`): `vacuum-model.ts` finds the robot's sensors and selects on the same device (by `translation_key`, then by entity id): battery (`device_class: battery`), cleaning progress / area / time, current room, error, mop intensity, mop mode and selected map. "What to do" has no entity in Roborock: mop only = fan speed `off`, vacuum only = mop intensity `off`; the last non-off values are remembered so "both" can restore them. Routines are the device's `button` entities without an entity category (the reset buttons have one) plus the scripts / buttons listed in the card's `routines`; the card shows the first 3 of `routines` (or of the device's). Rooms are read once per robot and map with `call_service` `roborock.get_maps` (`return_response`) and cleaned with `vacuum.send_command` `app_segment_clean`. The card redraws only when the robot, one of those entities or a favourite routine changes.
 
 ### Strings
 

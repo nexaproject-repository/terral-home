@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.9.1). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.10.0). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -28,7 +28,7 @@ Terral Home gives Home Assistant a clean, glass-style home screen inspired by mo
 
 - **Terral Home page** in the sidebar: full screen, no Home Assistant toolbar, with the "crepúsculo" background and the phone's status and home bars blended in.
 - **Grid** of 2 columns on phones and 4 on tablets. Card sizes (height/width): **1/1, 2/1, 2/2 and 4/2**.
-- **Add cards by type** (light, alarm, EV charger, climate, weather), then choose the device and name.
+- **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum), then choose the device and name.
 - **Arrange by touch**: long-press a card to move it, drag the bottom-right corner to resize, remove with **−**.
 - **Sections** with titles; move a whole section at once, or create one per Home Assistant area.
 - **A window for every card** with all its controls, and a **gear** for the card settings.
@@ -54,7 +54,7 @@ To update: HACS → Terral Home → **Redownload**, restart Home Assistant, then
 | --- | --- |
 | Add a card | **+** (top right) → pick the type → pick the device (or the alarm / weather) and the name → **Add** |
 | Open a card's window | Tap the card |
-| Quick action | Tap the card's icon (switch a light, lock the charger, turn the climate on or off…) |
+| Quick action | Tap the card's icon (switch a light, lock the charger, turn the climate on or off, pause the robot or pick one of its routines…) |
 | Card settings | Gear in the card's window → **Save**, or **Remove card** |
 | Move mode | Long-press any card. In move mode, swipe to scroll; rest a finger on a card for a moment to pick it up |
 | Resize | In move mode, drag the arc at the bottom-right corner |
@@ -116,6 +116,20 @@ For Met.no or any weather entity.
 - **Window**: humidity, wind and direction, pressure, clouds, dew point, rain today, 24 hours and 5 or 7 days.
 - **Settings**: name, hours or days on 2/2, rain/snow animation, current details, forecast days.
 
+### Robot vacuum
+
+For a robot that vacuums and/or mops. Made for [Roborock](https://www.home-assistant.io/integrations/roborock/), works with any vacuum entity (what the robot doesn't report is simply not shown).
+
+- **Sizes**: 1/1, 2/1 and 2/2. The icon is a round floor robot.
+- **Waiting** (docked or idle, glass card): 2/2 shows your **3 main routines** as buttons; the robot icon opens **every routine** (also on 1/1 and 2/1).
+- **Cleaning** (teal): the icon pauses; 2/2 shows progress, area and time, pause and back to the dock. **Going home**: sky blue.
+- **Stuck / error** (red): the icon stays the same with a red **!** at its bottom-right; 2/2 offers resume, back to the dock and locate.
+- **Battery** in the text, with a small battery icon that empties by steps and turns amber below 40 % and red below 20 % (a bolt while charging on the dock).
+- **Window**: what to do (vacuum, mop or both), suction, water, mop mode, where (whole home or rooms), start / pause / dock / locate and every routine. Controls that do nothing right now are dimmed, with the reason: water and mop mode only when mopping, suction off when only mopping, pause only while running, "to the dock" not when it's already there.
+- **Settings**: device and name, and the routines on the card (pick up to 3, numbered in the order you pick them; scripts that look like robot scripts can be added too).
+
+How it reads Roborock: battery, progress, area, time, current room and error come from the sensors on the robot's device; water and mop mode are its `select` entities; Roborock has no "mode" entity, so *mop only* is suction `off` and *vacuum only* is water `off`; each routine of the Roborock app is a `button` on the device; rooms come from the `roborock.get_maps` action and a room clean is sent as `app_segment_clean`.
+
 ## Using the cards in other dashboards
 
 The cards are also registered for normal Lovelace dashboards. Settings made in the gear are saved only inside the Terral Home page; in other dashboards use YAML.
@@ -164,6 +178,14 @@ show_details: true
 forecast_days: 7            # 5 | 7
 ```
 
+```yaml
+type: custom:terral-home-vacuum
+entity: vacuum.roborock
+routines:                   # optional: the 3 buttons on the 2/2 card, in order
+  - button.roborock_daily   # a Roborock routine button…
+  - script.vacuum_kitchen   # …or a script
+```
+
 ## Privacy
 
 Everything stays in your Home Assistant. The layout is saved in Home Assistant's storage (`.storage/terral_home.layout`); the cards only read entity states and history and call Home Assistant services. Terral Home sends nothing to outside services.
@@ -173,6 +195,7 @@ Everything stays in your Home Assistant. The layout is saved in Home Assistant's
 - Own navigation menu (phone button, compact sidebar on tablets).
 - Terral Home settings: general colour palette, 10 backgrounds, theme.
 - More cards: covers, sensors, scenes, cameras, appliances.
+- Robot vacuum: live map of the cleaning.
 - Notifications routed by house state (asleep → silent push, at home → Alexa and/or phone, away → phone; critical alerts always through) and appliance detectors (dishwasher, washing machine, oven…).
 - Collapsible sections.
 
@@ -195,7 +218,8 @@ npm run build      # type-checks and writes custom_components/terral_home/www/te
 Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto cristal, inspirada en las apps de casa de los móviles: una página propia a pantalla completa, tarjetas que añades y colocas con el dedo y una ventana para cada dispositivo.
 
 - **Instalación**: en HACS añade este repositorio como **repositorio personalizado** de tipo **Integración**, instala **Terral Home**, reinicia y añade la integración desde **Ajustes → Dispositivos y servicios**. Aparecerá **Terral Home** en la barra lateral.
-- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo) → dispositivo y nombre → **Añadir**.
+- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo, robot aspirador) → dispositivo y nombre → **Añadir**.
+- **Robot aspirador** (Roborock u otros): en espera, la 2/2 muestra tus 3 rutinas principales (se eligen en los ajustes) y el icono abre todas; limpiando, el icono pausa y se ve el progreso; atascado, sale una **!** roja sobre el icono. La batería va en el texto. En la ventana: aspirar / fregar / ambos, potencia, agua, modo de mopa, habitaciones y rutinas; lo que no aplica se apaga.
 - **Ordenar**: pulsación larga en una tarjeta para entrar en modo mover; desliza para desplazarte y deja el dedo quieto un instante sobre una tarjeta para agarrarla. La esquina inferior derecha cambia el tamaño y **−** la quita.
 - **Apartados**: en modo mover, **Añadir apartado**; toca el título para renombrarlo y arrastra las tres líneas para moverlo entero. También puedes crearlos por habitación desde **···**.
 - **Ajustes de cada tarjeta**: engranaje en su ventana.
