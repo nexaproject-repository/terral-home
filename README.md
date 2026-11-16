@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.14.0). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.15.0). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -29,7 +29,7 @@ Terral Home gives Home Assistant a clean, glass-style home screen inspired by mo
 - **Several dashboards**, each its own entry in Home Assistant's sidebar (name and icon of your choice), so each device can open its own one.
 - **Terral Home page** in the sidebar: full screen, no Home Assistant toolbar, with the "crepúsculo" background and the phone's status and home bars blended in.
 - **Same card size on every screen**: columns are about as wide as on a phone, every section is 2 columns wide, and tablets and computers place more sections side by side (each in the shortest column) instead of stretching the cards. Card sizes (height/width): **1/1, 2/1, 2/2 and 4/2**.
-- **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum), then choose the device and name.
+- **Add cards by type** (light, alarm, EV charger, climate, weather, robot vacuum, switch), then choose the device and name.
 - **Arrange by touch**: long-press a card to move it, drag the bottom-right corner to resize, remove with **−**.
 - **Pages** inside a dashboard, chosen with pills under the title, each with its own favourites and sections.
 - **Main dashboard per user**: open it at sign-in, and optionally show only that dashboard in the user's sidebar.
@@ -59,7 +59,7 @@ To update: HACS → Terral Home → **Redownload**, restart Home Assistant, then
 | --- | --- |
 | Add a card | **+** (top right) → pick the type → pick the device (or the alarm / weather) and the name → **Add** |
 | Open a card's window | Tap the card |
-| Quick action | Tap the card's icon (switch a light, lock the charger, turn the climate on or off, pause the robot or pick one of its routines…) |
+| Quick action | Tap the card's icon (switch a light, lock the charger, turn the climate on or off, pause the robot or pick one of its routines, switch the water heater…) |
 | Card settings | Gear in the card's window → **Save**, or **Remove card** |
 | Move mode | Long-press any card. In move mode, swipe to scroll; rest a finger on a card for a moment to pick it up |
 | Resize | In move mode, drag the arc at the bottom-right corner |
@@ -140,6 +140,20 @@ For a robot that vacuums and/or mops. Made for [Roborock](https://www.home-assis
 
 How it reads Roborock: battery, progress, area, time, current room and error come from the sensors on the robot's device; water and mop mode are its `select` entities; Roborock has no "mode" entity, so *mop only* is suction `off` and *vacuum only* is water `off`; each routine of the Roborock app is a `button` on the device; rooms come from the `roborock.get_maps` action and a room clean is sent as `app_segment_clean`.
 
+### Switch
+
+For anything on a switch: a water heater, a bug zapper, a plug, a fan… (`switch`, `input_boolean`; `light` and `fan` entities also work from YAML).
+
+- **Sizes**: 1/1, 2/1 and 2/2. The **icon** switches it on and off; a tap anywhere else opens the window.
+- **Icon**: 15 to choose from in the settings (water heater, mosquito, bug-zapper lamp, plug, fan, coffee machine, radiator, heater, dehumidifier, pump, Christmas tree, router, washing machine, TV, water). Without a choice, it's guessed from the name ("Termo" → water heater).
+- **Colour when on**: 8 colours (amber, orange, red, pink, violet, blue, teal, green), strong on the icon and soft on the card background. Amber is the light card's look. Off, the card is glass like every other.
+- **2/2 view**, chosen in the settings:
+  - **A · Data**: since when · power now · today (kWh, or time on without a meter).
+  - **B · Consumption**: the power (or today's kWh / time on) in big, with today's consumption per hour as bars.
+  - **C · Timeline of the day** (default): today's on periods from 0 to 24 h, with a mark for now.
+- **Window**: the state (the icon switches it; there's no extra button), **today** (timeline, time on, consumption and cost), the **last 7 days** (kWh per day, or hours on without a meter) and the **log**: every on and off with its time, how long it was on, what it used, and who did it (an automation or script by name, you, or someone from Home Assistant; read from the logbook).
+- **Settings**: device and name, colour (with a preview of the card on and off), 2/2 view, icon, power and energy sensors (automatic: the ones on the same device) and the price of a kWh to estimate the cost.
+
 ## Using the cards in other dashboards
 
 The cards are also registered for normal Lovelace dashboards. Settings made in the gear are saved only inside the Terral Home page; in other dashboards use YAML.
@@ -196,6 +210,17 @@ routines:                   # optional: the 3 buttons on the 2/2 card, in order
   - script.vacuum_kitchen   # …or a script
 ```
 
+```yaml
+type: custom:terral-home-switch
+entity: switch.water_heater
+icon: boiler                # boiler | mosquito | zapper | plug | fan | coffee | radiator | heater | dehumidifier | pump | tree | router | washer | tv | water
+color: orange               # amber | orange | red | pink | violet | blue | teal | green
+style: c                    # 2/2 view: a (data) | b (consumption) | c (timeline of the day)
+power_entity: sensor.water_heater_power    # optional: found on the same device when missing
+energy_entity: sensor.water_heater_energy  # optional
+price: 0.15                 # optional: price of a kWh, for the cost
+```
+
 ## Privacy
 
 Everything stays in your Home Assistant. The layout is saved in Home Assistant's storage (`.storage/terral_home.layout`); the cards only read entity states and history and call Home Assistant services. Terral Home sends nothing to outside services.
@@ -228,7 +253,8 @@ npm run build      # type-checks and writes custom_components/terral_home/www/te
 Terral Home da a Home Assistant una pantalla de inicio limpia, con efecto cristal, inspirada en las apps de casa de los móviles: una página propia a pantalla completa, tarjetas que añades y colocas con el dedo y una ventana para cada dispositivo.
 
 - **Instalación**: en HACS añade este repositorio como **repositorio personalizado** de tipo **Integración**, instala **Terral Home**, reinicia y añade la integración desde **Ajustes → Dispositivos y servicios**. Aparecerá **Terral Home** en la barra lateral.
-- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo, robot aspirador) → dispositivo y nombre → **Añadir**.
+- **Añadir una tarjeta**: **+** → tipo de tarjeta (luz, alarma, cargador, clima, tiempo, robot aspirador, interruptor) → dispositivo y nombre → **Añadir**.
+- **Interruptor** (termo, matamosquitos, enchufe…): el icono lo enciende y apaga; en los ajustes eliges el **icono** (15), el **color** al encender (8: fuerte en el icono y suave de fondo) y qué muestra la **2/2** (A · Datos, B · Consumo o C · Línea del día). La ventana tiene el día de hoy, el consumo de los últimos 7 días y el **registro** de encendidos y apagados con quién lo hizo. Sin medidor de consumo muestra horas encendido.
 - **Robot aspirador** (Roborock u otros): en espera, la 2/2 muestra tus 3 rutinas principales (se eligen en los ajustes) y el icono abre todas; limpiando, el icono pausa y se ve el progreso; atascado, sale una **!** roja sobre el icono. La batería va en el texto. En la ventana: aspirar / fregar / ambos, potencia, agua, modo de mopa, habitaciones y rutinas; lo que no aplica se apaga.
 - **Ordenar**: pulsación larga en una tarjeta para entrar en modo mover; desliza para desplazarte y deja el dedo quieto un instante sobre una tarjeta para agarrarla. La esquina inferior derecha cambia el tamaño y **−** la quita.
 - **Mismo tamaño en móvil, tablet y PC**: cada apartado ocupa 2 columnas y en pantallas anchas se ponen varios apartados uno al lado de otro (cada uno en la columna más corta).

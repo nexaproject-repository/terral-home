@@ -2,6 +2,11 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.15.0 — 2026-11-16
+- **Switch card** (`terral-home-switch`) for a water heater, bug zapper, plug…: sizes 1/1, 2/1 and 2/2; the icon switches it, the rest opens the window.
+- Chosen in its settings: one of 15 **icons** (guessed from the name otherwise), one of 8 **colours** (strong on the icon, soft on the background), the **2/2 view** (A · Data, B · Consumption, C · Timeline of the day), the power / energy sensors (automatic from the same device) and the price of a kWh.
+- **Window**: state (no extra on/off button, the icon does it), today (timeline, time on, consumption, cost), last 7 days (kWh or hours on without a meter) and the log of every on / off with who did it (automation, script, you or someone from Home Assistant).
+
 ## 0.14.0 — 2026-11-16
 - **Pages** inside a dashboard, chosen with pills under the title; each page has its own favourites, sections and address (`/terral-home/<page>`). In move mode: **+ Página**, page settings on the active pill (name, before/after, delete keeping or removing its cards) and drop a card on a pill to move it there.
 - **Main dashboard**: in Dashboard settings, "Use as my main dashboard" (the signed-in user, all their devices), "Main for the whole house" (admins) and "Only this dashboard in my sidebar" (hides every other sidebar entry for that user), so for example a non-admin user only ever sees their own dashboard.

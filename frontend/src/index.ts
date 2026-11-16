@@ -6,6 +6,7 @@ import "./charger/terral-charger-card";
 import "./climate/terral-climate-card";
 import "./weather/terral-weather-card";
 import "./vacuum/terral-vacuum-card";
+import "./switch/terral-switch-card";
 import "./panel/terral-home-panel";
 import type { HomeAssistant } from "./ha-types";
 
@@ -87,6 +88,18 @@ if (!w.customCards.some((c) => c.type === "terral-home-vacuum")) {
     documentationURL: "https://github.com/nexaproject-repository/terral-home",
     getEntitySuggestion: (_hass, entityId) =>
       entityId.startsWith("vacuum.") ? { config: { type: "custom:terral-home-vacuum", entity: entityId } } : null,
+  });
+}
+
+if (!w.customCards.some((c) => c.type === "terral-home-switch")) {
+  w.customCards.push({
+    type: "terral-home-switch",
+    name: "Terral · Interruptor",
+    description: "Termo, enchufe, matamosquitos… con icono y color a elegir, registro y consumo / Terral Home switch",
+    preview: true,
+    documentationURL: "https://github.com/nexaproject-repository/terral-home",
+    getEntitySuggestion: (_hass, entityId) =>
+      entityId.startsWith("switch.") || entityId.startsWith("input_boolean.") ? { config: { type: "custom:terral-home-switch", entity: entityId } } : null,
   });
 }
 

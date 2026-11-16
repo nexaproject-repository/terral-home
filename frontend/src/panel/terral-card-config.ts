@@ -4,7 +4,8 @@
 //             the weather, the entity itself (they have no device), and name.
 //   Per type — light entity / tint; charger lock switch, invert, data sensors,
 //             max power; climate limits, steps, per-mode controls, swing;
-//             weather forecast options; robot vacuum routines on the card.
+//             weather forecast options; robot vacuum routines on the card;
+//             switch colour, 2/2 view, icon and consumption sensors.
 // The size is not chosen here: new cards get a default and the corner resizes.
 // In "edit" mode it reports through terral-card-config / terral-card-remove
 // events (see openCardSettings), which the Terral panel stores in the layout.
@@ -34,8 +35,10 @@ import { lang } from "../i18n";
 import { stepMinusIcon, stepPlusIcon, thermoIcon, vacuumIcon } from "../shared/icons";
 import { deviceRoutines, isVacuumScript, routineName } from "../vacuum/vacuum-model";
 import { routineIcon } from "../vacuum/vacuum-look";
+import { SWITCH_COLORS, SWITCH_ICONS, guessIcon, switchIcon, switchTint } from "../switch/switch-look";
+import { meterOf } from "../switch/switch-model";
 
-export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum";
+export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch";
 export interface CardDraft {
   type: CardType;
   config: Record<string, any>;
@@ -49,7 +52,7 @@ export interface CardConfigOptions {
   onRemove?: () => void;
 }
 
-const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather", vacuum: "type_vacuum" };
+const TYPE_LABEL: Record<CardType, StringKey> = { light: "type_light", alarm: "type_alarm", charger: "ev_charger", climate: "type_climate", weather: "type_weather", vacuum: "type_vacuum", switch: "type_switch" };
 
 type Sub = "device" | "entity" | "alarm" | "weather" | "lock" | "status_entity" | "power_entity" | "energy_entity";
 type Dev = { id: string; name?: string | null; name_by_user?: string | null; area_id?: string | null; manufacturer?: string | null; model?: string | null };
@@ -66,6 +69,9 @@ export class TerralCardConfig extends TerralSheet {
 
   protected get heading() {
     if (this._sub === "entity" && this.draft.type === "climate") return t(this.hass, "climate_entity");
+    if (this._sub === "entity" && this.draft.type === "switch") return t(this.hass, "sw_entity");
+    if (this.draft.type === "switch" && this._sub === "power_entity") return t(this.hass, "sw_power");
+    if (this.draft.type === "switch" && this._sub === "energy_entity") return t(this.hass, "sw_energy");
     if (this._sub) return t(this.hass, ({ device: "ch_device", entity: "light_entity", alarm: "type_alarm", weather: "type_weather", lock: "ch_lock_entity", status_entity: "ch_status", power_entity: "ch_power", energy_entity: "ch_energy" } as const)[this._sub]);
     return this.options.mode === "edit" ? t(this.hass, "settings") : t(this.hass, TYPE_LABEL[this.draft.type]);
   }
@@ -196,6 +202,8 @@ export class TerralCardConfig extends TerralSheet {
         </section>`;
     } else if (type === "vacuum" && c.entity && h.states[c.entity]) {
       specific = this._vacuumSettings();
+    } else if (type === "switch" && c.entity) {
+      specific = this._switchSettings(devId);
     } else if (type === "climate" && c.entity && h.states[c.entity]) {
       specific = this._climateSettings(devId);
     } else if (type === "charger" && c.entity) {
@@ -359,6 +367,76 @@ export class TerralCardConfig extends TerralSheet {
       ${scripts.length ? html`<section><h3>${t(h, "vac_scripts")}</h3><div class="list">${scripts.map(row)}</div></section>` : nothing}`;
   }
 
+  /** Switch: colour (with a preview), 2/2 view, icon, consumption sensors and price. */
+  private _switchSettings(devId?: string) {
+    const h = this.hass;
+    const c = this.draft.config;
+    const name = c.name || this._defaultName();
+    const icon = c.icon || guessIcon(`${name} ${c.entity}`);
+    const tint = switchTint(c.color);
+    const ents = devId ? this._entitiesOf(devId, (id) => /^(switch|input_boolean)\./.test(id)) : [];
+    const auto = meterOf(h, { entity: c.entity });
+    const dataVal = (k: "power_entity" | "energy_entity", autoId?: string) =>
+      c[k] === "none" ? t(h, "none") : c[k] ? this._entName(c[k]) : autoId ? `${t(h, "auto")} · ${this._entName(autoId)}` : t(h, "auto");
+    const style = c.style ?? "c";
+    const styleRow = (v: "a" | "b" | "c") => html`<button class="opt ${style === v ? "sel" : ""}" @click=${() => this._set({ style: v === "c" ? undefined : v })}>
+      <span class="on">${t(h, `sw_style_${v}` as StringKey)}<small>${t(h, `sw_style_${v}_sub` as StringKey)}</small></span>
+      <span class="ck">${checkIcon(18)}</span>
+    </button>`;
+    return html`
+      ${ents.length > 1
+        ? html`<section><h3>${t(h, "sw_entity")}</h3><div class="list">${this._row(t(h, "sw_entity"), this._entName(c.entity), "entity", c.entity)}</div></section>`
+        : nothing}
+      <section>
+        <h3>${t(h, "sw_color")}</h3>
+        <div class="list">
+          <div class="sws">
+            ${SWITCH_COLORS.map((col) => {
+              const sel = (c.color ?? "amber") === col.key;
+              return html`<button class="sw ${sel ? "sel" : ""}" aria-label=${t(h, col.name)} aria-pressed=${sel} @click=${() => this._set({ color: col.key === "amber" ? undefined : col.key })}>
+                <i style="background:${switchTint(col.key).bg}"><b style="background:${col.hex}">${sel ? checkIcon(16) : nothing}</b></i>
+                <span>${t(h, col.name)}</span>
+              </button>`;
+            })}
+          </div>
+          <div class="prev">
+            <span class="pc" style="background:${tint.bg};color:${tint.fg}"><i style="background:${tint.accent}">${switchIcon(icon, true, 20)}</i><span>${name}<small style="color:${tint.fg2}">${t(h, "sw_on")}</small></span></span>
+            <span class="pc off"><i>${switchIcon(icon, false, 20)}</i><span>${name}<small>${t(h, "sw_off")}</small></span></span>
+          </div>
+        </div>
+        <p class="note" style="margin-top:8px">${t(h, "sw_color_note")}</p>
+      </section>
+      <section>
+        <h3>${t(h, "sw_style")}</h3>
+        <div class="list">${styleRow("a")}${styleRow("b")}${styleRow("c")}</div>
+      </section>
+      <section>
+        <h3>${t(h, "sw_icon")}</h3>
+        <div class="list">
+          <div class="igrid">
+            ${SWITCH_ICONS.map((k) => html`<button class="gi ${icon === k ? "sel" : ""}" aria-label=${k} aria-pressed=${icon === k} @click=${() => this._set({ icon: k })}>${switchIcon(k, false, 22)}</button>`)}
+          </div>
+        </div>
+      </section>
+      <section>
+        <h3>${t(h, "sw_meter")}</h3>
+        <div class="list">
+          ${this._row(t(h, "sw_power"), dataVal("power_entity", auto.power), "power_entity")}
+          ${this._row(t(h, "sw_energy"), dataVal("energy_entity", auto.energy), "energy_entity")}
+          <label class="li">
+            <span class="nm">${t(h, "sw_price")}<small>${t(h, "sw_price_sub")}</small></span>
+            <input class="num" type="number" inputmode="decimal" min="0" max="5" step="0.001" placeholder="0,15"
+              .value=${c.price != null ? String(c.price) : ""}
+              @change=${(ev: Event) => {
+                const n = parseFloat((ev.target as HTMLInputElement).value.replace(",", "."));
+                this._set({ price: Number.isFinite(n) && n > 0 ? n : undefined });
+              }} />
+          </label>
+        </div>
+        <p class="note" style="margin-top:8px">${t(h, "sw_meter_note")}</p>
+      </section>`;
+  }
+
   // ---- Sub pages ---------------------------------------------------------------
 
   private _opt(label: string, small: string | undefined, selected: boolean, onPick: () => void, icon?: unknown) {
@@ -419,6 +497,21 @@ export class TerralCardConfig extends TerralSheet {
           this._opt(this._devName(x.d), x.d.model ?? undefined, cur === x.d.id, () => this._set({ device: x.d.id, entity: x.ents[0], name: this._devName(x.d), routines: undefined }), vacuumIcon(20)))}
         ${this._group(t(h, "other_vacuums"), loose.map((id) => this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id, device: undefined, name: this._entName(id), routines: undefined }), vacuumIcon(20))))}`;
     }
+    if (type === "switch") {
+      const isSw = (id: string) => /^(switch|input_boolean)\./.test(id);
+      const devs = this._devices
+        .map((d) => ({ d, ents: this._entitiesOf(d.id, isSw) }))
+        .filter((x) => x.ents.length && this._match(this._devName(x.d), ...x.ents.map(this._entName)))
+        .sort((a, b) => this._devName(a.d).localeCompare(this._devName(b.d)));
+      const loose = Object.keys(h.states).filter((id) => isSw(id) && this._visible(id) && !this._deviceOf(id) && this._match(this._entName(id), id));
+      const clear = { power_entity: undefined, energy_entity: undefined, icon: undefined };
+      return html`${this._search()}
+        ${this._byArea(devs, (x) => x.d.area_id, (x) =>
+          this._opt(this._devName(x.d), x.ents.length > 1 ? x.ents.map(this._entName).join(" · ") : x.d.model ?? undefined, cur === x.d.id, () =>
+            this._set({ device: x.d.id, entity: x.ents[0], name: this._devName(x.d), ...clear }), switchIcon(guessIcon(this._devName(x.d)), false, 20)))}
+        ${this._group(t(h, "other_switches"), loose.map((id) => this._opt(this._entName(id), id, c.entity === id, () =>
+          this._set({ entity: id, device: undefined, name: this._entName(id), ...clear }), switchIcon(guessIcon(this._entName(id)), false, 20))))}`;
+    }
     if (type === "climate") {
       const devs = this._devices
         .map((d) => ({ d, ents: this._entitiesOf(d.id, (id) => id.startsWith("climate.")) }))
@@ -473,7 +566,8 @@ export class TerralCardConfig extends TerralSheet {
     const devId = c.device ?? this._deviceOf(c.entity);
     if (sub === "entity") {
       const dom = this.draft.type === "climate" ? "climate." : "light.";
-      const list = devId ? this._entitiesOf(devId, (id) => id.startsWith(dom)) : [];
+      const test = this.draft.type === "switch" ? (id: string) => /^(switch|input_boolean)\./.test(id) : (id: string) => id.startsWith(dom);
+      const list = devId ? this._entitiesOf(devId, test) : [];
       return html`<div class="scroll">${this._group(t(h, "light_entity"), list.map((id) => this._opt(this._entName(id), id, c.entity === id, () => this._set({ entity: id }))))}</div>`;
     }
     if (sub === "lock") {
@@ -533,6 +627,109 @@ export class TerralCardConfig extends TerralSheet {
         flex-direction: column;
         gap: 16px;
         padding-bottom: 4px;
+      }
+      .sws {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px 8px;
+        padding: 14px 12px 12px;
+      }
+      .sw {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .sw i {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .sw b {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+      }
+      .sw.sel i {
+        box-shadow: 0 0 0 3px #fff;
+      }
+      .sw.sel span {
+        color: #fff;
+      }
+      .prev {
+        display: flex;
+        gap: 12px;
+        padding: 12px 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .pc {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 16px;
+        padding: 10px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .pc > span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .pc i {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+      }
+      .pc small {
+        display: block;
+        font-size: 12px;
+        font-weight: 400;
+      }
+      .pc.off {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .pc.off i {
+        background: rgba(255, 255, 255, 0.18);
+      }
+      .pc.off small {
+        color: rgba(255, 255, 255, 0.65);
+      }
+      .igrid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        padding: 12px;
+      }
+      .gi {
+        aspect-ratio: 1;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .gi.sel {
+        background: #fff;
+        color: #23233a;
       }
       h3 {
         margin: 2px 4px 8px;
