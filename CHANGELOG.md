@@ -2,6 +2,10 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.14.0 — 2026-11-16
+- **Pages** inside a dashboard, chosen with pills under the title; each page has its own favourites, sections and address (`/terral-home/<page>`). In move mode: **+ Página**, page settings on the active pill (name, before/after, delete keeping or removing its cards) and drop a card on a pill to move it there.
+- **Main dashboard**: in Dashboard settings, "Use as my main dashboard" (the signed-in user, all their devices), "Main for the whole house" (admins) and "Only this dashboard in my sidebar" (hides every other sidebar entry for that user), so for example a non-admin user only ever sees their own dashboard.
+
 ## 0.13.0 — 2026-11-16
 - **Several dashboards.** Each one is its own entry in Home Assistant's sidebar with its own name, icon and layout, so it can be the main dashboard of a device. **···** → **New dashboard** (admins) and **Dashboard settings** (name, icon, admins only, delete). The existing layout is the first dashboard and is kept as it was.
 - **Favourites strip** on tablets and computers: the cards without a section run across every column on top, 1 row (1/1 cards) or 2 rows (1/1, 2/1, 2/2), and slide sideways when they don't fit. On phones they stay the first block.

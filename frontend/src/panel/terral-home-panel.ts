@@ -23,6 +23,7 @@ import { bulbIcon, dotsIcon, gearIcon, linesIcon, menuIcon, minusIcon, plusIcon,
 import { DEFAULT_QUICK, quickOf, quickState, runQuick } from "./quick-actions";
 import { openSectionSheet } from "./terral-section-sheet";
 import { type DashboardInfo, navigate, openDashboardSheet } from "./terral-dashboard-sheet";
+import { openPageSheet, pageSlug } from "./terral-page-sheet";
 import { backgroundCss } from "../shared/backgrounds";
 import { openAddSheet } from "./terral-add-sheet";
 import { newDraft, openCardConfig, updateCardConfig } from "./terral-card-config";
@@ -43,6 +44,15 @@ export interface TerralSection {
   id: string;
   title: string;
   cards: TerralCard[];
+  [key: string]: unknown;
+}
+
+/** An extra page of a dashboard (the first page is the layout itself). */
+export interface TerralPage {
+  id: string;
+  title: string;
+  cards: TerralCard[];
+  sections?: TerralSection[];
   [key: string]: unknown;
 }
 
@@ -116,7 +126,8 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
 export class TerralHomePanel extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ type: Boolean }) narrow = false;
-  @property({ attribute: false }) route?: unknown;
+  /** Home Assistant's route: prefix = this panel's URL, path = "/<page id>" or "". */
+  @property({ attribute: false }) route?: { prefix?: string; path?: string };
   @property({ attribute: false }) panel?: { config?: { version?: string; dashboard?: string; title?: string | null } };
 
   @state() private _layout?: TerralLayout;
@@ -125,7 +136,7 @@ export class TerralHomePanel extends LitElement {
   @state() private _cols = 2;
   @state() private _rowH = 82;
   @state() private _drag?: { kind: "card" | "section"; id: string };
-  @state() private _dropCard?: { key: ListKey; targetId?: string };
+  @state() private _dropCard?: { key: ListKey; targetId?: string; page?: string };
   @state() private _dropSection?: number;
   @state() private _dragDx = 0;
   @state() private _dragDy = 0;
@@ -271,7 +282,7 @@ export class TerralHomePanel extends LitElement {
 
   private _onKey = (ev: KeyboardEvent) => {
     if (ev.key !== "Escape" || this._renaming) return;
-    if (this._edit && !document.querySelector("terral-add-sheet, terral-menu-sheet, terral-confirm-sheet, terral-card-config, terral-section-sheet, terral-dashboard-sheet")) this._edit = false;
+    if (this._edit && !document.querySelector("terral-add-sheet, terral-menu-sheet, terral-confirm-sheet, terral-card-config, terral-section-sheet, terral-dashboard-sheet, terral-page-sheet")) this._edit = false;
   };
 
   // ---- Data ---------------------------------------------------------------
@@ -325,8 +336,20 @@ export class TerralHomePanel extends LitElement {
     }
   }
 
-  /** Apply a change to a copy of the layout and save it. */
+  /** Apply a change to a copy of the page shown (cards and sections) and save the layout. */
   private _update(change: (l: TerralLayout & { sections: TerralSection[] }) => void) {
+    const id = this._pageId;
+    this._updateRoot((root) => {
+      const pg = id ? (root.pages as TerralPage[]).find((x) => x.id === id) : root;
+      if (!pg) return;
+      pg.cards ??= [];
+      pg.sections ??= [];
+      change(pg as TerralLayout & { sections: TerralSection[] });
+    });
+  }
+
+  /** Apply a change to a copy of the whole layout (pages, favourites…) and save it. */
+  private _updateRoot(change: (l: TerralLayout & { sections: TerralSection[] }) => void) {
     const l = structuredClone(this._layout ?? { cards: [] }) as TerralLayout & { sections: TerralSection[] };
     l.cards ??= [];
     l.sections ??= [];
@@ -334,12 +357,42 @@ export class TerralHomePanel extends LitElement {
     this._save(l);
   }
 
+  // ---- Pages: the first page is the layout itself, the rest are in layout.pages.
+
+  private get _pages(): TerralPage[] {
+    return (this._layout?.pages as TerralPage[] | undefined) ?? [];
+  }
+
+  /** Page shown: the first segment of the route, if it is one of the pages ("" = first page). */
+  private get _pageId(): string {
+    const seg = (this.route?.path ?? "").split("/").filter(Boolean)[0] ?? "";
+    return this._pages.some((pg) => pg.id === seg) ? seg : "";
+  }
+
+  private get _page(): { cards?: TerralCard[]; sections?: TerralSection[] } {
+    const id = this._pageId;
+    return (id && this._pages.find((pg) => pg.id === id)) || this._layout || { cards: [] };
+  }
+
+  private get _homeTitle(): string {
+    return (this._layout?.page_title as string | undefined) || t(this.hass, "page_home");
+  }
+
+  /** URL of this panel ("/terral-home", "/terral-home-cocina"…). */
+  private get _prefix(): string {
+    return this.route?.prefix || `/${location.pathname.split("/")[1] ?? "terral-home"}`;
+  }
+
+  private _goPage(id: string) {
+    navigate(id ? `${this._prefix}/${id}` : this._prefix);
+  }
+
   private get _top(): TerralCard[] {
-    return this._layout?.cards ?? [];
+    return this._page.cards ?? [];
   }
 
   private get _sections(): TerralSection[] {
-    return this._layout?.sections ?? [];
+    return this._page.sections ?? [];
   }
 
   private get _allCards(): TerralCard[] {
@@ -492,6 +545,120 @@ export class TerralHomePanel extends LitElement {
     });
   };
 
+  // ---- Pages ----------------------------------------------------------------
+
+  /** Page pills under the title: shown with 2+ pages, or in move mode (to add one). */
+  private _pills(edit: boolean) {
+    const pages = this._pages;
+    if (!this._layout || (!pages.length && !edit)) return nothing;
+    const cur = this._pageId;
+    const dropOn = this._drag?.kind === "card" ? this._dropCard?.page : undefined;
+    const pill = (id: string, title: string) => {
+      const on = id === cur;
+      return html`<button
+        class="pg ${on ? "on" : ""} ${dropOn === id && !on ? "drop" : ""}"
+        data-page=${id}
+        aria-current=${on ? "page" : "false"}
+        @click=${() => (on ? edit && this._pageSettings() : this._goPage(id))}
+      >${title}${on && edit ? html`<span class="pgear" aria-label=${t(this.hass, "page_settings")}>${gearIcon(15)}</span>` : nothing}</button>`;
+    };
+    return html`<nav class="pills" aria-label=${t(this.hass, "pages")}>
+      ${pill("", this._homeTitle)}
+      ${pages.map((pg) => pill(pg.id, pg.title))}
+      ${edit ? html`<button class="pg add" @click=${() => this._addPage()}>${plusIcon(16)}${t(this.hass, "page_add")}</button>` : nothing}
+    </nav>`;
+  }
+
+  private _addPage() {
+    if (!this.hass) return;
+    openPageSheet(this.hass, {
+      mode: "create",
+      title: "",
+      first: false,
+      homeTitle: this._homeTitle,
+      onSave: (title) => {
+        const id = pageSlug(title, this._pages.map((pg) => pg.id));
+        this._updateRoot((l) => {
+          l.pages = [...((l.pages as TerralPage[] | undefined) ?? []), { id, title, cards: [], sections: [] }];
+        });
+        this._goPage(id);
+      },
+    });
+  }
+
+  private _pageSettings() {
+    if (!this.hass) return;
+    const id = this._pageId;
+    const pages = this._pages;
+    const idx = pages.findIndex((pg) => pg.id === id);
+    const pg = idx >= 0 ? pages[idx] : undefined;
+    const count = (pg?.cards?.length ?? 0) + (pg?.sections ?? []).reduce((n, s) => n + s.cards.length, 0);
+    openPageSheet(this.hass, {
+      mode: "edit",
+      title: pg ? pg.title : ((this._layout?.page_title as string | undefined) ?? ""),
+      first: !pg,
+      index: idx + 2,
+      count: pages.length + 1,
+      address: pg ? `${this._prefix}/${pg.id}` : this._prefix,
+      cards: count,
+      homeTitle: this._homeTitle,
+      onSave: (title) =>
+        this._updateRoot((l) => {
+          if (!pg) {
+            if (title) l.page_title = title;
+            else delete l.page_title;
+            return;
+          }
+          const target = (l.pages as TerralPage[]).find((x) => x.id === id);
+          if (target && title) target.title = title;
+        }),
+      onMove: (dir) => {
+        this._updateRoot((l) => {
+          const list = l.pages as TerralPage[];
+          const i = list.findIndex((x) => x.id === id);
+          const j = i + dir;
+          if (i < 0 || j < 0 || j >= list.length) return;
+          [list[i], list[j]] = [list[j], list[i]];
+        });
+        document.querySelector("terral-page-sheet")?.close();
+      },
+      onDelete: (keep) => {
+        this._updateRoot((l) => {
+          const list = l.pages as TerralPage[];
+          const i = list.findIndex((x) => x.id === id);
+          if (i < 0) return;
+          const [gone] = list.splice(i, 1);
+          if (keep) {
+            l.cards.push(...(gone.cards ?? []));
+            l.sections.push(...(gone.sections ?? []));
+          } else {
+            [...(gone.cards ?? []), ...(gone.sections ?? []).flatMap((s) => s.cards)].forEach((c) => this._els.delete(c.id));
+          }
+          if (!list.length) delete l.pages;
+        });
+        this._goPage("");
+      },
+    });
+  }
+
+  /** Move a card to the favourites of another page (dropped on its pill). */
+  private _moveCardToPage(id: string, pageId: string) {
+    const from = this._findCard(id);
+    const cur = this._pageId;
+    if (!from || pageId === cur) return;
+    this._updateRoot((l) => {
+      const pageOf = (pid: string) => (pid ? (l.pages as TerralPage[]).find((x) => x.id === pid) : l);
+      const src = pageOf(cur);
+      const dst = pageOf(pageId);
+      if (!src || !dst) return;
+      const list = from.key === TOP ? src.cards : (src.sections ?? []).find((s) => s.id === from.key)?.cards;
+      const i = list?.findIndex((c) => c.id === id) ?? -1;
+      if (!list || i < 0) return;
+      const [card] = list.splice(i, 1);
+      (dst.cards ??= []).push(card);
+    });
+  }
+
   // ---- Dashboards -----------------------------------------------------------
 
   private async _dashboardSettings() {
@@ -502,12 +669,13 @@ export class TerralHomePanel extends LitElement {
     openDashboardSheet(h, {
       mode: "edit",
       info,
+      panelUrl: this._prefix.replace(/^\//, ""),
       favorites: this._favorites,
       admin: h.user?.is_admin !== false,
       onSave: async ({ title, icon, require_admin, favorites }) => {
         const f = this._favorites;
         if (favorites.enabled !== f.enabled || favorites.rows !== f.rows) {
-          this._update((l) => {
+          this._updateRoot((l) => {
             const next: Record<string, unknown> = {};
             if (!favorites.enabled) next.enabled = false;
             if (favorites.rows === 1) next.rows = 1;
@@ -796,6 +964,11 @@ export class TerralHomePanel extends LitElement {
 
   private _hitCard(x: number, y: number) {
     const els = (this.shadowRoot?.elementsFromPoint(x, y) ?? []) as HTMLElement[];
+    const pill = els.find((el) => el.dataset?.page != null);
+    if (pill) {
+      this._dropCard = { key: TOP, page: pill.dataset.page };
+      return;
+    }
     const cell = els.find((el) => el.dataset?.cid != null && el.dataset.cid !== this._drag?.id);
     if (cell) {
       this._dropCard = { key: cell.dataset.key!, targetId: cell.dataset.cid };
@@ -841,7 +1014,8 @@ export class TerralHomePanel extends LitElement {
     const dropSection = this._dropSection;
     this._endDrag();
     if (!drag || !moved) return;
-    if (drag.kind === "card" && dropCard) this._moveCard(drag.id, dropCard.key, dropCard.targetId);
+    if (drag.kind === "card" && dropCard?.page != null) this._moveCardToPage(drag.id, dropCard.page);
+    else if (drag.kind === "card" && dropCard) this._moveCard(drag.id, dropCard.key, dropCard.targetId);
     if (drag.kind === "section" && dropSection != null) this._moveSection(drag.id, dropSection);
   };
 
@@ -949,6 +1123,7 @@ export class TerralHomePanel extends LitElement {
                 </div>`}
           </div>
           <h1>${this._title}</h1>
+          ${this._pills(edit)}
           ${this._error ? html`<p class="notice">${t(this.hass, "panel_error")} (${this._error})</p>` : nothing}
           ${strip
             ? html`<div class="favs">${this._grid(TOP, top, edit, false, top.length === 0 && edit ? t(this.hass, "fav_drop") : undefined)}</div>`
@@ -1055,7 +1230,7 @@ export class TerralHomePanel extends LitElement {
   }
 
   private _grid(key: ListKey, cards: TerralCard[], edit: boolean, addTile: boolean, placeholder?: string) {
-    const zoneTarget = this._drag?.kind === "card" && this._dropCard?.key === key && !this._dropCard.targetId;
+    const zoneTarget = this._drag?.kind === "card" && this._dropCard?.key === key && !this._dropCard.targetId && this._dropCard.page == null;
     const strip = this._inStrip(key);
     // The strip flows sideways (swipe for more); every other grid is 2 columns wide.
     const style = strip
@@ -1224,6 +1399,68 @@ export class TerralHomePanel extends LitElement {
     .grid {
       display: grid;
       grid-auto-flow: row dense;
+    }
+    /* Page pills under the title (scroll sideways when there are many). */
+    .pills {
+      display: flex;
+      gap: 8px;
+      margin: -6px -16px 20px;
+      padding: 4px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .pills::-webkit-scrollbar {
+      display: none;
+    }
+    .pg {
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 18px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      color: #fff;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.13);
+      -webkit-backdrop-filter: blur(24px) saturate(170%);
+      backdrop-filter: blur(24px) saturate(170%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      transition: transform 0.15s;
+    }
+    .pg.on {
+      background: #fff;
+      color: #23233a;
+      border-color: #fff;
+      box-shadow: none;
+    }
+    .editing .pg.on {
+      padding-right: 6px;
+    }
+    .pgear {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(35, 35, 58, 0.1);
+    }
+    .pg.add {
+      background: none;
+      box-shadow: none;
+      border: 2px dashed rgba(255, 255, 255, 0.45);
+      padding: 0 14px;
+      gap: 6px;
+    }
+    .pg.drop {
+      outline: 2px dashed rgba(255, 255, 255, 0.95);
+      outline-offset: 3px;
+      transform: scale(1.06);
     }
     /* Favourites strip: across every column, scrolls sideways when it doesn't fit. */
     .favs {

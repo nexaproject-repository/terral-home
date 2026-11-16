@@ -38,6 +38,7 @@ export interface HomeAssistant {
   config?: { version?: string };
   locale?: { language: string };
   user?: { is_admin?: boolean; name?: string };
+  panels?: Record<string, { url_path: string; title?: string | null; icon?: string | null }>;
   callService(
     domain: string,
     service: string,

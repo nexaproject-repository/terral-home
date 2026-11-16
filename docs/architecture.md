@@ -48,6 +48,10 @@ docs/                            this file and notes on Lovelace internals
       "name": "Sofa", "use_light_color": false }      // extra keys = card settings
   ],
   "favorites": { "enabled": true, "rows": 2 },   // optional: strip on/off, 1 or 2 rows
+  "page_title": "Inicio",                        // optional: name of the first page
+  "pages": [                                     // optional: the other pages
+    { "id": "luces", "title": "Luces", "cards": [ /* … */ ], "sections": [ /* … */ ] }
+  ],
   "sections": [
     { "id": "s1", "title": "Kitchen", "quick": ["lights", "climate"], "cards": [ /* same card objects */ ] }
   ]
@@ -82,6 +86,8 @@ Built with Lit 3 and Vite into a single ES module. `npm run build` runs `tsc --n
 
 - Reads its dashboard from `panel.config.dashboard`, loads that layout through the websocket, subscribes to changes and renders it. If Home Assistant reuses the element for another Terral dashboard, it starts over.
 - **Favourites strip** (tablets and computers, `layout.favorites`, on by default with 2 rows): the cards without a section are drawn above the lanes in a grid that flows sideways (`grid-auto-flow: column dense`, `rows` rows of `rowH`, columns of `colW`) and scrolls horizontally, with a fade on the right while there is more. In 1 row every card is shown as 1/1; in 2 rows a 4/2 card is shown as 2/2 (the stored size doesn't change). On phones they stay the first block.
+- **Pages**: the layout itself is the first page; `layout.pages` holds the others (max 12), each with its own `cards` and `sections`. The page shown comes from the panel route (`/<panel>/<page id>`), so the back button works and pages can be linked. `_update()` applies a change to the page shown and `_updateRoot()` to the whole layout (pages, favourites). Pills under the title switch pages (shown with 2+ pages or in move mode); in move mode **+ Página** and the gear on the active pill open `panel/terral-page-sheet.ts`, and dropping a card on a pill moves it to that page's favourites.
+- **Main dashboard** (`panel/terral-dashboard-sheet.ts`): Home Assistant's profile picker doesn't list integration panels, but HA opens whatever panel is in `default_panel`. Terral writes it into HA's frontend data: `frontend/set_user_data` key `core` for the signed-in user, `frontend/set_system_data` key `core` for the whole house (admins). "Only this dashboard in my sidebar" writes `hiddenPanels` in the user's `sidebar` data (every titled panel but this one, Settings and Developer tools).
 - **Dashboards**: **···** → **Dashboard settings** / **New dashboard** open `panel/terral-dashboard-sheet.ts` (sidebar name and icon, admins only, favourites, delete); a new dashboard opens at `/terral-home-<id>`.
 - **Same size everywhere**: a column is 160–184 px (about a phone column), every block is `SECTION_COLS` = 2 columns wide (a Terral setting may offer 4 later). The cards without a section form the first block (no title); each section is another. `_measure()` works out how many blocks fit side by side ("lanes": 1 on phones, 2 on tablets, 3–5 on computers) and the column width; the page is centred at that width. Row height is 85 % of half a column.
 - **Lanes (option A)**: `_rowsOf()` simulates the grid's `row dense` packing to know each block's height, and `_assignLanes()` puts each block, in order, in the shortest lane, so there are no gaps. Dragging a section picks the lane under the finger and the position by the sections' middles (`_hitSection`), shows a line there and moves the section in the list; the lanes are then recomputed.

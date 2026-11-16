@@ -5,6 +5,13 @@
 //                empty keeps "Terral Home")
 //   Favourites   strip across every column on tablets and computers, on/off
 //                and 1 row (1/1 cards) or 2 rows (1/1, 2/1 and 2/2)
+//   Main         make it the main dashboard of the signed-in user (all their
+//                devices) or, for admins, of the whole house. Home Assistant's
+//                own profile picker doesn't list integration panels, so Terral
+//                writes `default_panel` into HA's frontend user / system data.
+//                "Only this dashboard in my menu" hides every other sidebar entry
+//                for the signed-in user (HA's per-user "sidebar" data), e.g. so a
+//                non-admin user only ever sees their own dashboard.
 //   Delete       every dashboard but the first one
 import { css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
@@ -32,6 +39,8 @@ export interface DashboardSheetOptions {
   info: DashboardInfo;
   favorites: { enabled: boolean; rows: 1 | 2 };
   admin: boolean;
+  /** This dashboard's sidebar URL path ("terral-home", "terral-home-cocina"). */
+  panelUrl?: string;
   onSave: (r: DashboardResult) => void | Promise<void>;
   onDelete?: () => void | Promise<void>;
 }
@@ -72,9 +81,13 @@ export class TerralDashboardSheet extends TerralSheet {
   @state() private _rows: 1 | 2 = 2;
   @state() private _busy = false;
   @state() private _err?: string;
+  @state() private _userMain?: Record<string, unknown> | null;
+  @state() private _sysMain?: Record<string, unknown> | null;
+  @state() private _sidebar?: { panelOrder?: string[]; hiddenPanels?: string[] } | null;
 
   connectedCallback(): void {
     super.connectedCallback();
+    this._loadMain();
     const o = this.options;
     this._title = o.info.title ?? "";
     this._icon = o.info.icon ?? (o.mode === "create" ? "mdi:view-dashboard" : "");
@@ -85,6 +98,57 @@ export class TerralDashboardSheet extends TerralSheet {
 
   protected get heading() {
     return t(this.hass, this.options.mode === "create" ? "dash_new" : "dash_settings");
+  }
+
+  /** Current default panels (user and, for admins, the whole house). */
+  private async _loadMain() {
+    if (this.options.mode !== "edit" || !this.options.panelUrl) return;
+    const get = (type: string) => this.hass.callWS<{ value: Record<string, unknown> | null }>({ type, key: "core" }).then((r) => r?.value ?? {}).catch(() => null);
+    this._userMain = await get("frontend/get_user_data");
+    this._sidebar = await this.hass
+      .callWS<{ value: { panelOrder?: string[]; hiddenPanels?: string[] } | null }>({ type: "frontend/get_user_data", key: "sidebar" })
+      .then((r) => r?.value ?? {})
+      .catch(() => null);
+    if (this.options.admin) this._sysMain = await get("frontend/get_system_data");
+  }
+
+  private async _setMain(scope: "user" | "system", on: boolean) {
+    const cur = (scope === "user" ? this._userMain : this._sysMain) ?? {};
+    const value: Record<string, unknown> = { ...cur };
+    if (on) value.default_panel = this.options.panelUrl;
+    else delete value.default_panel;
+    try {
+      await this.hass.callWS({ type: scope === "user" ? "frontend/set_user_data" : "frontend/set_system_data", key: "core", value });
+      if (scope === "user") this._userMain = value;
+      else this._sysMain = value;
+    } catch (e) {
+      this._err = (e as { message?: string })?.message ?? String(e);
+    }
+  }
+
+  /** Sidebar entries that can be hidden: everything with a title but this dashboard and Settings. */
+  private get _others(): string[] {
+    const keep = new Set([this.options.panelUrl, "config", "developer-tools", "profile"]);
+    return Object.values(this.hass.panels ?? {})
+      .filter((pn) => pn.title && !keep.has(pn.url_path))
+      .map((pn) => pn.url_path);
+  }
+
+  private get _onlyThis(): boolean {
+    const hidden = new Set(this._sidebar?.hiddenPanels ?? []);
+    const others = this._others;
+    return others.length > 0 && others.every((u) => hidden.has(u)) && !hidden.has(this.options.panelUrl ?? "");
+  }
+
+  private async _setOnlyThis(on: boolean) {
+    const value = { ...(this._sidebar ?? {}) };
+    value.hiddenPanels = on ? this._others : [];
+    try {
+      await this.hass.callWS({ type: "frontend/set_user_data", key: "sidebar", value });
+      this._sidebar = value;
+    } catch (e) {
+      this._err = (e as { message?: string })?.message ?? String(e);
+    }
   }
 
   private get _isHome() {
@@ -164,6 +228,34 @@ export class TerralDashboardSheet extends TerralSheet {
               </div>
               <p class="note">${t(h, "fav_note")}</p>
             </section>`}
+        ${!create && o.panelUrl && this._userMain !== undefined
+          ? html`<section>
+              <h3>${t(h, "dash_main")}</h3>
+              <div class="list">
+                ${this._userMain !== null
+                  ? html`<button class="li" role="switch" aria-checked=${this._userMain?.default_panel === o.panelUrl}
+                      @click=${() => this._setMain("user", this._userMain?.default_panel !== o.panelUrl)}>
+                      <span class="nm">${t(h, "dash_main_me")}<small>${t(h, "dash_main_me_sub")}</small></span>
+                      <span class="tog ${this._userMain?.default_panel === o.panelUrl ? "on" : ""}"></span>
+                    </button>`
+                  : nothing}
+                ${o.admin && this._sysMain
+                  ? html`<button class="li" role="switch" aria-checked=${this._sysMain?.default_panel === o.panelUrl}
+                      @click=${() => this._setMain("system", this._sysMain?.default_panel !== o.panelUrl)}>
+                      <span class="nm">${t(h, "dash_main_all")}<small>${t(h, "dash_main_all_sub")}</small></span>
+                      <span class="tog ${this._sysMain?.default_panel === o.panelUrl ? "on" : ""}"></span>
+                    </button>`
+                  : nothing}
+                ${this._sidebar !== null && this._sidebar !== undefined
+                  ? html`<button class="li" role="switch" aria-checked=${this._onlyThis} @click=${() => this._setOnlyThis(!this._onlyThis)}>
+                      <span class="nm">${t(h, "dash_only")}<small>${t(h, "dash_only_sub")}</small></span>
+                      <span class="tog ${this._onlyThis ? "on" : ""}"></span>
+                    </button>`
+                  : nothing}
+              </div>
+              <p class="note">${t(h, "dash_main_note")}</p>
+            </section>`
+          : nothing}
         ${this._err ? html`<p class="err">${this._err}</p>` : nothing}
         ${!create && o.onDelete && canEditMeta
           ? html`<button class="remove" @click=${() =>

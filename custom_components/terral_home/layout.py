@@ -10,6 +10,9 @@ Storage:
   terral_home.layout            the layout of the first dashboard, "home"
   terral_home.layout_<id>       the layout of every other dashboard
 
+A layout is the dashboard's first page (cards, sections); its other pages,
+each with its own cards and sections, are in "pages".
+
 The "home" dashboard always exists; it is the one Terral Home had before
 dashboards existed, so older layouts keep working unchanged.
 """
@@ -35,6 +38,7 @@ HOME = "home"
 MAX_CARDS = 300
 MAX_SECTIONS = 50
 MAX_DASHBOARDS = 20
+MAX_PAGES = 12
 
 CARD_SCHEMA = vol.Schema(
     {
@@ -56,11 +60,24 @@ SECTION_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
+PAGE_SCHEMA = vol.Schema(
+    {
+        vol.Required("id"): vol.All(str, vol.Length(min=1, max=40)),
+        vol.Required("title"): vol.All(str, vol.Length(max=40)),
+        vol.Required("cards"): vol.All([CARD_SCHEMA], vol.Length(max=MAX_CARDS)),
+        vol.Optional("sections"): vol.All([SECTION_SCHEMA], vol.Length(max=MAX_SECTIONS)),
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
 LAYOUT_SCHEMA = vol.Schema(
     {
         # Cards without a section: shown first, or as the favourites strip.
         vol.Required("cards"): vol.All([CARD_SCHEMA], vol.Length(max=MAX_CARDS)),
         vol.Optional("sections"): vol.All([SECTION_SCHEMA], vol.Length(max=MAX_SECTIONS)),
+        # Extra pages (the layout itself is the first page, titled page_title or "Inicio").
+        vol.Optional("pages"): vol.All([PAGE_SCHEMA], vol.Length(max=MAX_PAGES)),
+        vol.Optional("page_title"): vol.All(str, vol.Length(max=40)),
         # Favourites strip on tablets and computers: {"enabled": bool, "rows": 1 | 2}.
         vol.Optional("favorites"): vol.Schema(
             {vol.Optional("enabled"): bool, vol.Optional("rows"): vol.In([1, 2])}, extra=vol.ALLOW_EXTRA
