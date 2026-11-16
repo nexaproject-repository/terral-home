@@ -7,7 +7,7 @@ import { t, type StringKey } from "../i18n";
 import { bulbIcon, chevronIcon, evChargerIcon, searchIcon, shieldIcon, vacuumIcon } from "../shared/icons";
 import { switchIcon } from "../switch/switch-look";
 import { energyIcon } from "../energy/energy-views";
-import { isPower } from "../energy/energy-model";
+import { isMeter } from "../energy/energy-model";
 import { TerralSheet } from "../shared/terral-sheet";
 import type { CardType } from "./terral-card-config";
 import { weatherIcon } from "../weather/weather-look";
@@ -56,7 +56,7 @@ export class TerralAddSheet extends TerralSheet {
               ? "vacuum_missing"
               : type === "switch" && !Object.keys(this.hass.states).some((id) => id.startsWith("switch.") || id.startsWith("input_boolean."))
                 ? "switch_missing"
-                : type === "energy" && !Object.keys(this.hass.states).some((id) => isPower(this.hass, id))
+                : type === "energy" && !Object.keys(this.hass.states).some((id) => isMeter(this.hass, id))
                   ? "energy_missing"
                   : undefined;
     const soon = SOON.filter((x) => match(x.name));

@@ -10,7 +10,7 @@
 [![Validate](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml/badge.svg)](https://github.com/nexaproject-repository/terral-home/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 🚧 Early development (v0.16.1). It works day to day, but things still change between versions.
+> 🚧 Early development (v0.16.2). It works day to day, but things still change between versions.
 
 Terral Home gives Home Assistant a clean, glass-style home screen inspired by modern mobile home apps: a full-screen page of its own, cards you add and arrange by touch, and windows for every device. A notification system that knows whether you are home, away or asleep is planned.
 
@@ -151,7 +151,7 @@ Where the electricity of the house is going right now: the main meter split into
   - **Bars**: one bar per consumer with its kW and share; the stripes run faster the more it uses.
 - The 4/2 also shows today's kWh per consumer as a coloured bar.
 - **Window**: power now (in the chosen view), today per hour stacked by consumer, each consumer today (kWh and share) and the last 7 days.
-- **Settings**: the main meter (a power sensor; or "no main meter", then the total is the sum of the consumers and there is no "rest"), the view, the **consumers** (each with its power sensor, name, colour and icon; add, remove, move up / down), rest of the house on/off and the movement on/off.
+- **Settings**: the main meter (a power sensor, or an energy counter in kWh: its power is worked out from how fast it grows; or "no main meter", then the total is the sum of the consumers and there is no "rest"), the view, the **consumers** (each with its power sensor, name, colour and icon; add, remove, move up / down), rest of the house on/off and the movement on/off.
 - History comes from Home Assistant's long-term statistics (hourly mean power), so a week of a meter that reports every few seconds stays light; the current hour comes from the state history.
 
 ### Switch

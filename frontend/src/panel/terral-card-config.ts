@@ -38,7 +38,7 @@ import { deviceRoutines, isVacuumScript, routineName } from "../vacuum/vacuum-mo
 import { routineIcon } from "../vacuum/vacuum-look";
 import { SWITCH_COLORS, SWITCH_ICONS, guessIcon, switchIcon, switchTint } from "../switch/switch-look";
 import { meterOf } from "../switch/switch-model";
-import { CONSUMER_COLORS, type Consumer, consumerIcon, consumerName, guessTotal, isPower } from "../energy/energy-model";
+import { CONSUMER_COLORS, type Consumer, consumerIcon, consumerName, guessTotal, isEnergy, isMeter } from "../energy/energy-model";
 import { ENERGY_ICONS, energyIcon, hexOf } from "../energy/energy-views";
 
 export type CardType = "light" | "alarm" | "charger" | "climate" | "weather" | "vacuum" | "switch" | "energy";
@@ -523,7 +523,7 @@ export class TerralCardConfig extends TerralSheet {
     const h = this.hass;
     const used = new Set(this._consumers.map((x) => x.entity));
     return Object.keys(h.states)
-      .filter((id) => isPower(h, id) && this._visible(id) && this._match(this._entName(id), id))
+      .filter((id) => isMeter(h, id) && this._visible(id) && this._match(this._entName(id), id))
       .sort((a, b) => Number(used.has(a)) - Number(used.has(b)) || this._entName(a).localeCompare(this._entName(b)))
       .slice(0, 80);
   }
@@ -710,14 +710,14 @@ export class TerralCardConfig extends TerralSheet {
         <div class="list">
           ${this._opt(t(h, "en_total_none"), t(h, "en_total_none_sub"), !!c.sum_only, () =>
             this._set({ sum_only: true, entity: this._consumers[0]?.entity ?? "none" }))}
-          ${this._powerList().map((id) => this._opt(this._entName(id), id, !c.sum_only && c.entity === id, () => this._set({ sum_only: undefined, entity: id })))}
+          ${this._powerList().map((id) => this._opt(this._entName(id), isEnergy(h, id) ? `${id} · ${t(h, "en_counter")}` : id, !c.sum_only && c.entity === id, () => this._set({ sum_only: undefined, entity: id })))}
         </div></div>`;
     }
     if (sub === "consumer_entity") {
       const i = this._ci;
       const list = this._consumers;
       return html`<div class="scroll">${this._search()}
-        <div class="list">${this._powerList().filter((id) => c.sum_only || id !== c.entity).map((id) => this._opt(this._entName(id), id, list[i]?.entity === id, () => {
+        <div class="list">${this._powerList().filter((id) => c.sum_only || id !== c.entity).map((id) => this._opt(this._entName(id), isEnergy(h, id) ? `${id} · ${t(h, "en_counter")}` : id, list[i]?.entity === id, () => {
           if (i < list.length) this._setConsumers(list.map((y, k) => (k === i ? { ...y, entity: id } : y)));
           else this._setConsumers([...list, { entity: id, color: CONSUMER_COLORS[list.length % CONSUMER_COLORS.length] }]);
           queueMicrotask(() => (this._sub = "consumer"));

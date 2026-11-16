@@ -2,6 +2,10 @@
 
 All notable changes to Terral Home. Versions follow `MAJOR.MINOR.PATCH`; while the project is in `0.x`, minor versions may change behaviour.
 
+## 0.16.2 — 2026-11-16
+- Home consumption: the main meter and the consumers can also be **energy counters** (kWh, like a "total consumption" sensor); their power now is worked out from how fast they grow over the last minutes, and their history from the hourly growth.
+- The total never shows less than what the consumers add up to.
+
 ## 0.16.1 — 2026-11-16
 - Home consumption: a consumer under 1 kW shows its watts (80 W instead of 0,0 kW), and a sensor without data shows a dash instead of 0.
 

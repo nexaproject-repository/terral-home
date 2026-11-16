@@ -51,15 +51,70 @@ export interface Live {
 const unit = (h: HomeAssistant, id: string) => String(h.states[id]?.attributes.unit_of_measurement ?? "");
 
 export const isPower = (h: HomeAssistant, id: string) => id.startsWith("sensor.") && ["W", "kW", "MW"].includes(unit(h, id));
+/** An energy counter (kWh that only grows): its power is worked out from how fast it grows. */
+export const isEnergy = (h: HomeAssistant, id: string) => id.startsWith("sensor.") && ["Wh", "kWh", "MWh"].includes(unit(h, id));
+export const isMeter = (h: HomeAssistant, id: string) => isPower(h, id) || isEnergy(h, id);
 
-/** Power in kW (null when unknown). */
+const kwhFactor = (u: string) => (u === "Wh" ? 1 / 1000 : u === "MWh" ? 1000 : 1);
+
+// Recent readings of energy counters, to derive their power.
+const samples = new Map<string, { t: number; v: number }[]>();
+const RATE_WINDOW = 15 * 60_000;
+
+function remember(id: string, t: number, v: number) {
+  const list = samples.get(id) ?? [];
+  if (!list.some((s) => s.t === t)) {
+    list.push({ t, v });
+    list.sort((a, b) => a.t - b.t);
+  }
+  const cut = Date.now() - 2 * RATE_WINDOW;
+  samples.set(id, list.filter((s, i) => s.t >= cut || i === list.length - 1));
+}
+
+/** kW of an energy counter: growth over the last minutes (0 when it hasn't grown for 10 min). */
+function rateKw(id: string): number | null {
+  const list = samples.get(id) ?? [];
+  const last = list[list.length - 1];
+  if (!last) return null;
+  if (Date.now() - last.t > 10 * 60_000) return 0;
+  const base = list.find((s) => last.t - s.t <= RATE_WINDOW && last.t - s.t >= 60_000);
+  if (!base) return list.length > 1 ? Math.max(0, (last.v - list[0].v) / Math.max(1 / 60, (last.t - list[0].t) / H)) : null;
+  return Math.max(0, (last.v - base.v) / ((last.t - base.t) / H));
+}
+
+/** Power in kW (null when unknown). Energy counters give their recent growth rate. */
 export function kwOf(h: HomeAssistant, id?: string): number | null {
   const e = id ? h.states[id] : undefined;
   if (!e || e.state === "unavailable" || e.state === "unknown") return null;
   const v = Number(e.state);
   if (!Number.isFinite(v)) return null;
   const u = unit(h, e.entity_id);
+  if (isEnergy(h, e.entity_id)) {
+    remember(e.entity_id, new Date(e.last_updated ?? e.last_changed).getTime(), v * kwhFactor(u));
+    return rateKw(e.entity_id);
+  }
   return u === "W" ? v / 1000 : u === "MW" ? v * 1000 : v;
+}
+
+/** Seeds the readings of energy counters with the last minutes of history. */
+export async function seedCounters(h: HomeAssistant, ids: string[]) {
+  const counters = ids.filter((id) => isEnergy(h, id) && (samples.get(id)?.length ?? 0) < 2);
+  if (!counters.length) return;
+  const res = await h.callWS<Record<string, HistPoint[]>>({
+    type: "history/history_during_period",
+    start_time: new Date(Date.now() - RATE_WINDOW).toISOString(),
+    entity_ids: counters,
+    minimal_response: true,
+    no_attributes: true,
+    significant_changes_only: false,
+  });
+  for (const id of counters) {
+    const k = kwhFactor(unit(h, id));
+    for (const p of res[id] ?? []) {
+      const v = Number(p.s);
+      if (Number.isFinite(v)) remember(id, p.lu * 1000, v * k);
+    }
+  }
 }
 
 export function consumerIcon(c: Consumer, name: string): string {
@@ -91,7 +146,8 @@ export function live(h: HomeAssistant, c: EnergyConfig, restName: string): Live 
   });
   const sum = items.reduce((a, x) => a + x.kw, 0);
   const meter = c.sum_only ? null : kwOf(h, c.entity);
-  const total = meter != null ? Math.max(meter, 0) : sum;
+  // A meter that lags (or a counter between readings) never shows less than what the consumers add up to.
+  const total = meter != null ? Math.max(meter, sum) : sum;
   if (showRest(c)) items.push({ key: "rest", name: restName, icon: "home", color: REST_COLOR, kw: Math.max(0, total - sum), rest: true });
   return { total, items };
 }
@@ -109,35 +165,44 @@ export interface EnergyUsage {
 }
 
 type HistPoint = { s: string; lu: number };
-type StatRow = { start: number | string; end?: number | string; mean?: number | null };
+type StatRow = { start: number | string; end?: number | string; mean?: number | null; change?: number | null };
 
 const ts = (v: number | string) => (typeof v === "number" ? v : new Date(v).getTime());
 const H = 3_600_000;
 
-/** kWh per hour (key = hour start ms) of each power sensor since `from`. */
+/** kWh per hour (key = hour start ms) of each power sensor or energy counter since `from`. */
 async function hourlyKwh(h: HomeAssistant, ids: string[], from: Date): Promise<Record<string, Map<number, number>>> {
   const out: Record<string, Map<number, number>> = {};
   for (const id of ids) out[id] = new Map();
-  // Long-term statistics (hourly mean power): light even for a week of data.
-  let stats: Record<string, StatRow[]> = {};
-  try {
-    stats = await h.callWS<Record<string, StatRow[]>>({
-      type: "recorder/statistics_during_period",
-      start_time: from.toISOString(),
-      statistic_ids: ids,
-      period: "hour",
-      types: ["mean"],
-      units: { power: "kW" },
-    });
-  } catch {
-    stats = {};
-  }
+  // Long-term statistics: hourly mean power (kW × 1 h = kWh) or hourly growth of
+  // an energy counter. Light even for a week of data.
+  const stat = async (list: string[], types: string[], units: Record<string, string>) => {
+    if (!list.length) return {} as Record<string, StatRow[]>;
+    try {
+      return await h.callWS<Record<string, StatRow[]>>({
+        type: "recorder/statistics_during_period",
+        start_time: from.toISOString(),
+        statistic_ids: list,
+        period: "hour",
+        types,
+        units,
+      });
+    } catch {
+      return {} as Record<string, StatRow[]>;
+    }
+  };
+  const counters = new Set(ids.filter((id) => isEnergy(h, id)));
+  const stats = {
+    ...(await stat(ids.filter((id) => !counters.has(id)), ["mean"], { power: "kW" })),
+    ...(await stat([...counters], ["change"], { energy: "kWh" })),
+  };
   let lastHour = from.getTime();
   for (const id of ids) {
     for (const r of stats[id] ?? []) {
-      if (r.mean == null) continue;
+      const v = counters.has(id) ? r.change : r.mean;
+      if (v == null) continue;
       const s = ts(r.start);
-      out[id].set(s, Math.max(0, r.mean));
+      out[id].set(s, Math.max(0, v));
       lastHour = Math.max(lastHour, s + H);
     }
   }
@@ -158,6 +223,18 @@ async function hourlyKwh(h: HomeAssistant, ids: string[], from: Date): Promise<R
     });
     for (const id of need) {
       const start = missing.includes(id) ? from.getTime() : lastHour;
+      if (counters.has(id)) {
+        // A counter: every increase goes to the hour it happened in.
+        const k = kwhFactor(unit(h, id));
+        const pts = (hist[id] ?? []).map((p) => [p.lu * 1000, Number(p.s) * k] as [number, number]).filter(([, v]) => Number.isFinite(v));
+        for (let i = 1; i < pts.length; i++) {
+          const d = pts[i][1] - pts[i - 1][1];
+          if (d <= 0 || pts[i][0] < start) continue;
+          const hs = Math.floor(pts[i][0] / H) * H;
+          out[id].set(hs, (out[id].get(hs) ?? 0) + d);
+        }
+        continue;
+      }
       const u = unit(h, id);
       const k = u === "W" ? 1 / 1000 : u === "MW" ? 1000 : 1;
       const pts = (hist[id] ?? []).map((p) => [p.lu * 1000, Number(p.s) * k] as [number, number]).filter(([, v]) => Number.isFinite(v));
@@ -182,6 +259,7 @@ export async function loadEnergy(h: HomeAssistant, c: EnergyConfig, days = 1): P
   const from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (days - 1));
   const cons = (c.consumers ?? []).filter((x) => x.entity);
   const ids = [...new Set([...(c.sum_only ? [] : [c.entity]), ...cons.map((x) => x.entity)])].filter((id) => h.states[id]);
+  await seedCounters(h, ids).catch(() => undefined);
   const per = await hourlyKwh(h, ids, from);
   const keyOf = (i: number) => `c${i}`;
   const hours = (start: number, n: number) => Array.from({ length: n }, (_, i) => start + i * H);
@@ -238,7 +316,7 @@ export const fmt1 = (h: HomeAssistant | undefined, n: number) =>
 
 /** Guess of the main meter: a power sensor called total / general / house… */
 export function guessTotal(h: HomeAssistant): string | undefined {
-  const list = Object.keys(h.states).filter((id) => isPower(h, id));
+  const list = [...Object.keys(h.states).filter((id) => isPower(h, id)), ...Object.keys(h.states).filter((id) => isEnergy(h, id))];
   const name = (id: string) => `${id} ${h.states[id]?.attributes.friendly_name ?? ""}`.toLowerCase();
   return (
     list.find((id) => /(general|total|casa|home|house|vivienda|grid|red|import|contador|main)/.test(name(id))) ?? undefined
